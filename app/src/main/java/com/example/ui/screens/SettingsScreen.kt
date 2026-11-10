@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.StayCurrentPortrait
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
@@ -91,6 +92,7 @@ fun SettingsScreen(
     val singleBeadLock by viewModel.singleBeadLock.collectAsState()
     val soundType by viewModel.soundType.collectAsState()
     val hapticIntensity by viewModel.hapticIntensity.collectAsState()
+    val keepScreenAwake by viewModel.keepScreenAwake.collectAsState()
     val reminders by viewModel.reminders.collectAsState()
     val autoGuideSpeed by viewModel.autoGuideSpeedSeconds.collectAsState()
 
@@ -302,13 +304,74 @@ fun SettingsScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
+                    Text(
+                        text = "Authentic prayer bead textures with natural chatoyancy and grain patterns",
+                        fontSize = 12.sp,
+                        color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.Gray
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Row 1: Olive Wood & Textured Tiger's Eye
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        BeadMaterial.entries.forEach { mat ->
+                        listOf(BeadMaterial.OLIVE_WOOD, BeadMaterial.TIGER_EYE).forEach { mat ->
+                            val isSelected = beadMaterial == mat
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(
+                                        if (isSelected) {
+                                            if (isNightMode) Color(0xFF133F34) else Color(0xFFE8F5E9)
+                                        } else Color.Transparent
+                                    )
+                                    .border(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) GoldPrimary else if (isNightMode) Color(0xFF1E483C) else Color(0xFFE0E0E0),
+                                        shape = RoundedCornerShape(14.dp)
+                                    )
+                                    .clickable { viewModel.setBeadMaterial(mat) }
+                                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = mat.baseColor,
+                                    modifier = Modifier.size(30.dp),
+                                    border = androidx.compose.foundation.BorderStroke(2.dp, mat.lightColor)
+                                ) {}
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = if (mat == BeadMaterial.OLIVE_WOOD) "Olive Wood" else "Tiger's Eye",
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) (if (isNightMode) GoldLight else EmeraldDeep) else (if (isNightMode) Color.White else Color.DarkGray)
+                                    )
+                                    Text(
+                                        text = if (mat.isTextured) "✨ Textured Agate" else "Madinah Grain",
+                                        fontSize = 10.sp,
+                                        color = if (mat.isTextured) GoldPrimary else (if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray),
+                                        fontWeight = if (mat.isTextured) FontWeight.SemiBold else FontWeight.Normal
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Row 2: Royal Jade, Pearl of Noor, Celestial Lapis
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(BeadMaterial.ROYAL_JADE, BeadMaterial.PEARL, BeadMaterial.LAPIS_LAZULI).forEach { mat ->
                             val isSelected = beadMaterial == mat
                             Column(
                                 modifier = Modifier
@@ -331,12 +394,17 @@ fun SettingsScreen(
                                 Surface(
                                     shape = CircleShape,
                                     color = mat.baseColor,
-                                    modifier = Modifier.size(28.dp),
+                                    modifier = Modifier.size(26.dp),
                                     border = androidx.compose.foundation.BorderStroke(2.dp, mat.lightColor)
                                 ) {}
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = mat.displayName.replace("Madinah ", "").replace("Royal ", "").replace("Pearl of ", ""),
+                                    text = when (mat) {
+                                        BeadMaterial.ROYAL_JADE -> "Jade"
+                                        BeadMaterial.PEARL -> "Pearl"
+                                        BeadMaterial.LAPIS_LAZULI -> "Lapis"
+                                        else -> mat.displayName
+                                    },
                                     fontSize = 11.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                     color = if (isNightMode) Color.White else Color.DarkGray,
@@ -693,6 +761,67 @@ fun SettingsScreen(
                             checkedThumbColor = GoldPrimary,
                             checkedTrackColor = EmeraldPrimary
                         )
+                    )
+                }
+            }
+        }
+
+        // Keep Screen Awake During Dhikr Card
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("keep_awake_card"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isNightMode) Color(0xFF09241C) else Color.White
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (isNightMode) Color(0xFF1E483C) else Color(0xFFE0E0E0)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.StayCurrentPortrait,
+                            contentDescription = "Keep Screen Awake",
+                            tint = GoldPrimary
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Keep Screen Awake",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isNightMode) GoldLight else EmeraldDeep
+                            )
+                            Text(
+                                text = "Keeps the screen lit while reciting so your phone never dims or locks during dhikr",
+                                fontSize = 11.sp,
+                                color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.Gray
+                            )
+                        }
+                    }
+
+                    Switch(
+                        checked = keepScreenAwake,
+                        onCheckedChange = { viewModel.setKeepScreenAwake(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = GoldPrimary,
+                            checkedTrackColor = EmeraldPrimary
+                        ),
+                        modifier = Modifier.testTag("keep_awake_switch")
                     )
                 }
             }

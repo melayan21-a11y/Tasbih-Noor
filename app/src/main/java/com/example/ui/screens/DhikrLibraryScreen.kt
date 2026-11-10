@@ -62,6 +62,7 @@ import com.example.data.model.DhikrItem
 import com.example.ui.theme.EmeraldDeep
 import com.example.ui.theme.EmeraldPrimary
 import com.example.ui.theme.GoldLight
+import com.example.data.model.AthkarType
 import com.example.ui.theme.GoldPrimary
 import com.example.ui.viewmodel.TasbihViewModel
 
@@ -69,6 +70,7 @@ import com.example.ui.viewmodel.TasbihViewModel
 fun DhikrLibraryScreen(
     viewModel: TasbihViewModel,
     onDhikrSelected: (DhikrItem) -> Unit,
+    onOpenAthkarReader: (AthkarType) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val allDhikrs by viewModel.allDhikrs.collectAsState()
@@ -137,6 +139,246 @@ fun DhikrLibraryScreen(
             )
 
             Spacer(modifier = Modifier.height(10.dp))
+
+            // Featured Daily Booklets (Morning & Evening Athkar with Full Duas & Counter)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Morning Adhkar Card
+                Card(
+                    onClick = { onOpenAthkarReader(AthkarType.MORNING) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("morning_adhkar_booklet_card"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isNightMode) Color(0xFF10362B) else Color(0xFFFFF8E1)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isNightMode) GoldPrimary.copy(alpha = 0.5f) else Color(0xFFFFD54F)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "🌅", fontSize = 18.sp)
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isNightMode) Color(0xFF1B4E3E) else Color(0xFFFFECB3)
+                            ) {
+                                Text(
+                                    text = "12 Duas",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isNightMode) GoldLight else Color(0xFF8D6E63),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Morning Adhkar",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isNightMode) GoldLight else Color(0xFF4E342E)
+                        )
+                        Text(
+                            text = "أَذْكَارُ الصَّبَاحِ",
+                            fontSize = 12.sp,
+                            color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color(0xFF6D4C41)
+                        )
+                    }
+                }
+
+                // Evening Adhkar Card
+                Card(
+                    onClick = { onOpenAthkarReader(AthkarType.EVENING) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("evening_adhkar_booklet_card"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isNightMode) Color(0xFF0F3229) else Color(0xFFE8F5E9)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isNightMode) EmeraldPrimary.copy(alpha = 0.5f) else Color(0xFFA5D6A7)
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "🌇", fontSize = 18.sp)
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isNightMode) Color(0xFF164739) else Color(0xFFC8E6C9)
+                            ) {
+                                Text(
+                                    text = "11 Duas",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isNightMode) GoldLight else EmeraldDeep,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Evening Adhkar",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isNightMode) GoldLight else EmeraldDeep
+                        )
+                        Text(
+                            text = "أَذْكَارُ الْمَسَاءِ",
+                            fontSize = 12.sp,
+                            color = if (isNightMode) Color.White.copy(alpha = 0.7f) else EmeraldPrimary
+                        )
+                    }
+                }
+            }
+
+            // Chained After-Salah Tasbih Set (33-33-33-1 Set)
+            val isSalahSetMode by viewModel.isSalahSetMode.collectAsState()
+            val salahSetStage by viewModel.salahSetStage.collectAsState()
+
+            Card(
+                onClick = {
+                    viewModel.startSalahSetMode()
+                    val subhanAllah = allDhikrs.find { it.id == 1L || it.transliteration.contains("SubhanAllah", ignoreCase = true) } ?: allDhikrs.firstOrNull()
+                    if (subhanAllah != null) {
+                        onDhikrSelected(subhanAllah)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+                    .testTag("salah_set_library_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isNightMode) {
+                        if (isSalahSetMode) Color(0xFF134235) else Color(0xFF0D2A21)
+                    } else {
+                        if (isSalahSetMode) Color(0xFFE8F5E9) else Color(0xFFF1F8F5)
+                    }
+                ),
+                border = androidx.compose.foundation.BorderStroke(
+                    if (isSalahSetMode) 2.dp else 1.dp,
+                    if (isSalahSetMode) GoldPrimary else if (isNightMode) Color(0xFF1E5242) else Color(0xFFC8E6C9)
+                )
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "🕌", fontSize = 20.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "After-Salah Tasbih Set",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isNightMode) GoldLight else EmeraldDeep
+                                )
+                                Text(
+                                    text = "Prophetic 100 Praises Chain • Sunnah",
+                                    fontSize = 11.sp,
+                                    color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color(0xFF5A7268)
+                                )
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSalahSetMode) GoldPrimary else if (isNightMode) Color(0xFF1B4E3E) else Color(0xFFC8E6C9)
+                        ) {
+                            Text(
+                                text = if (isSalahSetMode) "ACTIVE" else "100 TOTAL",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSalahSetMode) Color(0xFF071914) else if (isNightMode) GoldLight else EmeraldDeep,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // 4 steps chain preview
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "33 SubhanAllah",
+                            fontSize = 11.sp,
+                            fontWeight = if (isSalahSetMode && salahSetStage.stepIndex == 1) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSalahSetMode && salahSetStage.stepIndex == 1) GoldLight else if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF2E3D36)
+                        )
+                        Text(text = "➔", fontSize = 11.sp, color = if (isNightMode) GoldPrimary else EmeraldPrimary)
+                        Text(
+                            text = "33 Alhamdulillah",
+                            fontSize = 11.sp,
+                            fontWeight = if (isSalahSetMode && salahSetStage.stepIndex == 2) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSalahSetMode && salahSetStage.stepIndex == 2) GoldLight else if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF2E3D36)
+                        )
+                        Text(text = "➔", fontSize = 11.sp, color = if (isNightMode) GoldPrimary else EmeraldPrimary)
+                        Text(
+                            text = "33 Allahu Akbar",
+                            fontSize = 11.sp,
+                            fontWeight = if (isSalahSetMode && salahSetStage.stepIndex == 3) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSalahSetMode && salahSetStage.stepIndex == 3) GoldLight else if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF2E3D36)
+                        )
+                        Text(text = "➔", fontSize = 11.sp, color = if (isNightMode) GoldPrimary else EmeraldPrimary)
+                        Text(
+                            text = "1 Seal",
+                            fontSize = 11.sp,
+                            fontWeight = if (isSalahSetMode && salahSetStage.stepIndex == 4) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSalahSetMode && salahSetStage.stepIndex == 4) GoldLight else if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF2E3D36)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Button(
+                        onClick = {
+                            viewModel.startSalahSetMode()
+                            val subhanAllah = allDhikrs.find { it.id == 1L || it.transliteration.contains("SubhanAllah", ignoreCase = true) } ?: allDhikrs.firstOrNull()
+                            if (subhanAllah != null) {
+                                onDhikrSelected(subhanAllah)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isSalahSetMode) GoldPrimary else if (isNightMode) Color(0xFF1E5242) else EmeraldPrimary,
+                            contentColor = if (isSalahSetMode) Color(0xFF071914) else Color.White
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(38.dp)
+                            .testTag("start_salah_set_library_button")
+                    ) {
+                        Text(
+                            text = if (isSalahSetMode) "Continue Chained Recitation on Beads ➔" else "Start Chained After-Salah Set (100) ➔",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
 
             // Search Bar
             OutlinedTextField(

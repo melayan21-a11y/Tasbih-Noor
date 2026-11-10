@@ -43,6 +43,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.data.model.AthkarType
+import com.example.ui.screens.AthkarReaderScreen
 import com.example.ui.screens.AnalyticsScreen
 import com.example.ui.screens.DhikrLibraryScreen
 import com.example.ui.screens.SettingsScreen
@@ -69,6 +71,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: TasbihViewModel = viewModel()
             val isNightMode by viewModel.isNightMode.collectAsState()
+            val keepAwake by viewModel.keepScreenAwake.collectAsState()
+
+            androidx.compose.runtime.LaunchedEffect(keepAwake) {
+                if (keepAwake) {
+                    window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
+            }
 
             TasbihTheme(darkTheme = isNightMode) {
                 TasbihApp(viewModel = viewModel)
@@ -80,12 +91,26 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun TasbihApp(viewModel: TasbihViewModel) {
     var currentTab by remember { mutableStateOf(MainTab.TASBIH) }
+    var activeAthkarType by remember { mutableStateOf<AthkarType?>(null) }
     val isNightMode by viewModel.isNightMode.collectAsState()
 
-    // Handle back button to return to Tasbih home screen if in other tabs
-    BackHandler(enabled = currentTab != MainTab.TASBIH) {
-        currentTab = MainTab.TASBIH
+    // Handle back button: exit Athkar Reader if active, or return to Tasbih tab
+    BackHandler(enabled = activeAthkarType != null || currentTab != MainTab.TASBIH) {
+        if (activeAthkarType != null) {
+            activeAthkarType = null
+        } else {
+            currentTab = MainTab.TASBIH
+        }
     }
+
+    if (activeAthkarType != null) {
+        AthkarReaderScreen(
+            viewModel = viewModel,
+            initialType = activeAthkarType ?: AthkarType.MORNING,
+            onBack = { activeAthkarType = null },
+            modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars)
+        )
+    } else {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -193,7 +218,8 @@ fun TasbihApp(viewModel: TasbihViewModel) {
                 MainTab.TASBIH -> {
                     TasbihMainScreen(
                         viewModel = viewModel,
-                        onNavigateToLibrary = { currentTab = MainTab.LIBRARY }
+                        onNavigateToLibrary = { currentTab = MainTab.LIBRARY },
+                        onOpenAthkarReader = { activeAthkarType = it }
                     )
                 }
                 MainTab.LIBRARY -> {
@@ -201,7 +227,8 @@ fun TasbihApp(viewModel: TasbihViewModel) {
                         viewModel = viewModel,
                         onDhikrSelected = {
                             currentTab = MainTab.TASBIH
-                        }
+                        },
+                        onOpenAthkarReader = { activeAthkarType = it }
                     )
                 }
                 MainTab.ANALYTICS -> {
@@ -212,5 +239,6 @@ fun TasbihApp(viewModel: TasbihViewModel) {
                 }
             }
         }
+    }
     }
 }

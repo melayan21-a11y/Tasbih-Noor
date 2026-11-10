@@ -16,6 +16,7 @@ import com.example.ui.components.BeadTension
 import com.example.util.AudioHapticManager
 import com.example.util.HapticIntensity
 import com.example.util.SoundEffectType
+import com.example.util.TasbihPreferences
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,17 +39,71 @@ data class MonthDayStat(
     val isFuture: Boolean
 )
 
+enum class SalahSetStage(
+    val stepIndex: Int,
+    val transliteration: String,
+    val arabicText: String,
+    val translation: String,
+    val target: Int
+) {
+    SUBHANALLAH(
+        stepIndex = 1,
+        transliteration = "SubhanAllah",
+        arabicText = "سُبْحَانَ اللَّهِ",
+        translation = "Glory be to Allah",
+        target = 33
+    ),
+    ALHAMDULILLAH(
+        stepIndex = 2,
+        transliteration = "Alhamdulillah",
+        arabicText = "الْحَمْدُ لِلَّهِ",
+        translation = "All praise is due to Allah",
+        target = 33
+    ),
+    ALLAHU_AKBAR(
+        stepIndex = 3,
+        transliteration = "Allahu Akbar",
+        arabicText = "اللَّهُ أَكْبَرُ",
+        translation = "Allah is the Greatest",
+        target = 33
+    ),
+    TAHLIL_SEAL(
+        stepIndex = 4,
+        transliteration = "La ilaha illallah wahdahu la shareeka lah, lahul mulku wa lahul hamdu wa Huwa 'ala kulli shay'in qadeer",
+        arabicText = "لَا إِلٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ",
+        translation = "There is no deity except Allah alone without partner, to Him belongs sovereignty and all praise, and He is over all things capable",
+        target = 1
+    )
+}
+
 class TasbihViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: TasbihRepository
     val audioHapticManager = AudioHapticManager(application.applicationContext)
     val reminderManager = DhikrReminderManager(application.applicationContext)
+    val preferences = TasbihPreferences(application.applicationContext)
+
+    // After Salah Tasbih (33 SubhanAllah -> 33 Alhamdulillah -> 33 Allahu Akbar -> 1 Seal = 100)
+    private val _isSalahSetMode = MutableStateFlow(preferences.isSalahSetMode)
+    val isSalahSetMode: StateFlow<Boolean> = _isSalahSetMode.asStateFlow()
+
+    private val _salahSetStage = MutableStateFlow(SalahSetStage.SUBHANALLAH)
+    val salahSetStage: StateFlow<SalahSetStage> = _salahSetStage.asStateFlow()
 
     init {
         val database = TasbihDatabase.getDatabase(application.applicationContext, viewModelScope)
         repository = TasbihRepository(database.dhikrDao(), database.dhikrLogDao())
         viewModelScope.launch {
             repository.ensureDefaultAdhkarPopulated()
+            // Restore previously selected Dhikr
+            val savedId = preferences.selectedDhikrId
+            allDhikrs.collect { list ->
+                if (_selectedDhikr.value == null && list.isNotEmpty()) {
+                    val matching = list.find { it.id == savedId } ?: list.first()
+                    _selectedDhikr.value = matching
+                    _targetCount.value = if (preferences.savedTargetCount > 0) preferences.savedTargetCount else matching.defaultTarget
+                }
+            }
         }
     }
 
@@ -81,28 +136,32 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     private val _lapsCompleted = MutableStateFlow(0)
     val lapsCompleted: StateFlow<Int> = _lapsCompleted.asStateFlow()
 
-    private val _targetCount = MutableStateFlow(33)
+    private val _targetCount = MutableStateFlow(preferences.savedTargetCount)
     val targetCount: StateFlow<Int> = _targetCount.asStateFlow()
 
     // Preferences & Modes - Default to beautiful Night Noor Theme
-    private val _isNightMode = MutableStateFlow(true)
+    private val _isNightMode = MutableStateFlow(preferences.isNightMode)
     val isNightMode: StateFlow<Boolean> = _isNightMode.asStateFlow()
 
-    private val _beadMaterial = MutableStateFlow(BeadMaterial.OLIVE_WOOD)
+    private val _beadMaterial = MutableStateFlow(preferences.beadMaterial)
     val beadMaterial: StateFlow<BeadMaterial> = _beadMaterial.asStateFlow()
 
-    private val _soundType = MutableStateFlow(SoundEffectType.WOOD_CLICK)
+    private val _soundType = MutableStateFlow(preferences.soundType)
     val soundType: StateFlow<SoundEffectType> = _soundType.asStateFlow()
 
-    private val _hapticIntensity = MutableStateFlow(HapticIntensity.MEDIUM)
+    private val _hapticIntensity = MutableStateFlow(preferences.hapticIntensity)
     val hapticIntensity: StateFlow<HapticIntensity> = _hapticIntensity.asStateFlow()
 
     // Bead String Tension & Sensitivity Control
-    private val _beadTension = MutableStateFlow(BeadTension.STANDARD)
+    private val _beadTension = MutableStateFlow(preferences.beadTension)
     val beadTension: StateFlow<BeadTension> = _beadTension.asStateFlow()
 
-    private val _singleBeadLock = MutableStateFlow(true)
+    private val _singleBeadLock = MutableStateFlow(preferences.singleBeadLock)
     val singleBeadLock: StateFlow<Boolean> = _singleBeadLock.asStateFlow()
+
+    // Keep screen awake during dhikr recitation
+    private val _keepScreenAwake = MutableStateFlow(preferences.keepScreenAwake)
+    val keepScreenAwake: StateFlow<Boolean> = _keepScreenAwake.asStateFlow()
 
     // Auto-Guide & Voice Recitation
     private val _isAutoGuiding = MutableStateFlow(false)
@@ -127,15 +186,103 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     private val _currentCalendarMonth = MutableStateFlow(Calendar.getInstance())
     val currentCalendarMonth: StateFlow<Calendar> = _currentCalendarMonth.asStateFlow()
 
+    fun startSalahSetMode() {
+        _isSalahSetMode.value = true
+        preferences.isSalahSetMode = true
+        _salahSetStage.value = SalahSetStage.SUBHANALLAH
+        _currentCount.value = 0
+        _targetCount.value = 33
+        val subhanAllah = allDhikrs.value.find { it.id == 1L || it.transliteration.contains("SubhanAllah", ignoreCase = true) }
+        if (subhanAllah != null) {
+            _selectedDhikr.value = subhanAllah
+        }
+        stopAutoGuide()
+    }
+
+    fun exitSalahSetMode() {
+        _isSalahSetMode.value = false
+        preferences.isSalahSetMode = false
+        _salahSetStage.value = SalahSetStage.SUBHANALLAH
+        _currentCount.value = 0
+        val savedId = preferences.selectedDhikrId
+        val matching = allDhikrs.value.find { it.id == savedId } ?: allDhikrs.value.firstOrNull()
+        _selectedDhikr.value = matching
+        _targetCount.value = matching?.defaultTarget ?: 33
+    }
+
     fun selectDhikr(dhikr: DhikrItem) {
+        _isSalahSetMode.value = false
+        preferences.isSalahSetMode = false
         _selectedDhikr.value = dhikr
         _targetCount.value = dhikr.defaultTarget
         _currentCount.value = 0
         _lapsCompleted.value = 0
+        preferences.selectedDhikrId = dhikr.id
+        preferences.savedTargetCount = dhikr.defaultTarget
         stopAutoGuide()
     }
 
     fun onBeadPulled() {
+        if (_isSalahSetMode.value) {
+            audioHapticManager.playBeadSound(_soundType.value)
+            audioHapticManager.triggerBeadHaptic(_hapticIntensity.value)
+
+            val stage = _salahSetStage.value
+            val newCount = _currentCount.value + 1
+
+            // Record in database
+            val dhikrToRecord = when (stage) {
+                SalahSetStage.SUBHANALLAH -> allDhikrs.value.find { it.id == 1L }
+                SalahSetStage.ALHAMDULILLAH -> allDhikrs.value.find { it.id == 2L }
+                SalahSetStage.ALLAHU_AKBAR -> allDhikrs.value.find { it.id == 3L }
+                SalahSetStage.TAHLIL_SEAL -> allDhikrs.value.find { it.id == 5L }
+            } ?: _selectedDhikr.value ?: allDhikrs.value.firstOrNull()
+
+            if (dhikrToRecord != null) {
+                viewModelScope.launch {
+                    repository.recordDhikrCount(dhikrToRecord, 1)
+                }
+            }
+
+            if (newCount >= stage.target) {
+                audioHapticManager.triggerTargetReachedHaptic()
+                when (stage) {
+                    SalahSetStage.SUBHANALLAH -> {
+                        _salahSetStage.value = SalahSetStage.ALHAMDULILLAH
+                        _currentCount.value = 0
+                        _targetCount.value = 33
+                        val alhamd = allDhikrs.value.find { it.id == 2L }
+                        if (alhamd != null) _selectedDhikr.value = alhamd
+                    }
+                    SalahSetStage.ALHAMDULILLAH -> {
+                        _salahSetStage.value = SalahSetStage.ALLAHU_AKBAR
+                        _currentCount.value = 0
+                        _targetCount.value = 33
+                        val akbar = allDhikrs.value.find { it.id == 3L }
+                        if (akbar != null) _selectedDhikr.value = akbar
+                    }
+                    SalahSetStage.ALLAHU_AKBAR -> {
+                        _salahSetStage.value = SalahSetStage.TAHLIL_SEAL
+                        _currentCount.value = 0
+                        _targetCount.value = 1
+                        val tahlil = allDhikrs.value.find { it.id == 5L }
+                        if (tahlil != null) _selectedDhikr.value = tahlil
+                    }
+                    SalahSetStage.TAHLIL_SEAL -> {
+                        _lapsCompleted.value += 1
+                        _salahSetStage.value = SalahSetStage.SUBHANALLAH
+                        _currentCount.value = 0
+                        _targetCount.value = 33
+                        val subhan = allDhikrs.value.find { it.id == 1L }
+                        if (subhan != null) _selectedDhikr.value = subhan
+                    }
+                }
+            } else {
+                _currentCount.value = newCount
+            }
+            return
+        }
+
         val dhikr = _selectedDhikr.value ?: allDhikrs.value.firstOrNull() ?: return
         if (_selectedDhikr.value == null) {
             _selectedDhikr.value = dhikr
@@ -164,6 +311,47 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun undoLastBead() {
+        if (_isSalahSetMode.value) {
+            if (_currentCount.value > 0) {
+                _currentCount.value -= 1
+            } else {
+                when (_salahSetStage.value) {
+                    SalahSetStage.TAHLIL_SEAL -> {
+                        _salahSetStage.value = SalahSetStage.ALLAHU_AKBAR
+                        _currentCount.value = 32
+                        _targetCount.value = 33
+                        val akbar = allDhikrs.value.find { it.id == 3L }
+                        if (akbar != null) _selectedDhikr.value = akbar
+                    }
+                    SalahSetStage.ALLAHU_AKBAR -> {
+                        _salahSetStage.value = SalahSetStage.ALHAMDULILLAH
+                        _currentCount.value = 32
+                        _targetCount.value = 33
+                        val alhamd = allDhikrs.value.find { it.id == 2L }
+                        if (alhamd != null) _selectedDhikr.value = alhamd
+                    }
+                    SalahSetStage.ALHAMDULILLAH -> {
+                        _salahSetStage.value = SalahSetStage.SUBHANALLAH
+                        _currentCount.value = 32
+                        _targetCount.value = 33
+                        val subhan = allDhikrs.value.find { it.id == 1L }
+                        if (subhan != null) _selectedDhikr.value = subhan
+                    }
+                    SalahSetStage.SUBHANALLAH -> {
+                        if (_lapsCompleted.value > 0) {
+                            _lapsCompleted.value -= 1
+                            _salahSetStage.value = SalahSetStage.TAHLIL_SEAL
+                            _currentCount.value = 0
+                            _targetCount.value = 1
+                            val tahlil = allDhikrs.value.find { it.id == 5L }
+                            if (tahlil != null) _selectedDhikr.value = tahlil
+                        }
+                    }
+                }
+            }
+            return
+        }
+
         if (_currentCount.value > 0) {
             _currentCount.value -= 1
         } else if (_lapsCompleted.value > 0 && _targetCount.value > 0) {
@@ -173,7 +361,15 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun resetCounter() {
-        _currentCount.value = 0
+        if (_isSalahSetMode.value) {
+            _salahSetStage.value = SalahSetStage.SUBHANALLAH
+            _currentCount.value = 0
+            _targetCount.value = 33
+            val subhan = allDhikrs.value.find { it.id == 1L }
+            if (subhan != null) _selectedDhikr.value = subhan
+        } else {
+            _currentCount.value = 0
+        }
         _lapsCompleted.value = 0
         stopAutoGuide()
     }
@@ -181,18 +377,22 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     fun setTargetCount(target: Int) {
         _targetCount.value = target
         _currentCount.value = 0
+        preferences.savedTargetCount = target
     }
 
     fun setNightMode(enabled: Boolean) {
         _isNightMode.value = enabled
+        preferences.isNightMode = enabled
     }
 
     fun setBeadMaterial(material: BeadMaterial) {
         _beadMaterial.value = material
+        preferences.beadMaterial = material
     }
 
     fun setSoundType(type: SoundEffectType) {
         _soundType.value = type
+        preferences.soundType = type
         if (type != SoundEffectType.MUTE) {
             audioHapticManager.playBeadSound(type)
         }
@@ -200,15 +400,23 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setHapticIntensity(intensity: HapticIntensity) {
         _hapticIntensity.value = intensity
+        preferences.hapticIntensity = intensity
         audioHapticManager.triggerBeadHaptic(intensity)
     }
 
     fun setBeadTension(tension: BeadTension) {
         _beadTension.value = tension
+        preferences.beadTension = tension
     }
 
     fun setSingleBeadLock(enabled: Boolean) {
         _singleBeadLock.value = enabled
+        preferences.singleBeadLock = enabled
+    }
+
+    fun setKeepScreenAwake(enabled: Boolean) {
+        _keepScreenAwake.value = enabled
+        preferences.keepScreenAwake = enabled
     }
 
     fun toggleAutoGuide() {

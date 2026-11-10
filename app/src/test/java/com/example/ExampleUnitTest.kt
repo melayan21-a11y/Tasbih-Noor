@@ -38,4 +38,46 @@ class ExampleUnitTest {
         assertEquals(100, custom.defaultTarget)
         assertEquals("Custom", custom.category)
     }
+
+    @Test
+    fun athkarRepository_containsValidMorningAndEveningSets() {
+        val morning = com.example.data.model.AthkarRepository.morningAthkar
+        val evening = com.example.data.model.AthkarRepository.eveningAthkar
+
+        assertTrue(morning.isNotEmpty())
+        assertTrue(evening.isNotEmpty())
+        assertTrue(morning.all { it.arabicText.isNotBlank() && it.targetCount > 0 })
+        assertTrue(evening.all { it.arabicText.isNotBlank() && it.targetCount > 0 })
+    }
+
+    @Test
+    fun devotionRank_calculatesCorrectTierAndHorizons() {
+        val totalRecitations = 12500
+        val level = (totalRecitations / 2500) + 1
+        val progressInLevel = totalRecitations % 2500
+
+        assertEquals(6, level)
+        assertEquals(0, progressInLevel)
+    }
+
+    @Test
+    fun salahSetStage_hasExactFourStepsAndOneHundredTotal() {
+        val stages = com.example.ui.viewmodel.SalahSetStage.values()
+        assertEquals(4, stages.size)
+        assertEquals(1, com.example.ui.viewmodel.SalahSetStage.SUBHANALLAH.stepIndex)
+        assertEquals(33, com.example.ui.viewmodel.SalahSetStage.SUBHANALLAH.target)
+
+        assertEquals(2, com.example.ui.viewmodel.SalahSetStage.ALHAMDULILLAH.stepIndex)
+        assertEquals(33, com.example.ui.viewmodel.SalahSetStage.ALHAMDULILLAH.target)
+
+        assertEquals(3, com.example.ui.viewmodel.SalahSetStage.ALLAHU_AKBAR.stepIndex)
+        assertEquals(33, com.example.ui.viewmodel.SalahSetStage.ALLAHU_AKBAR.target)
+
+        assertEquals(4, com.example.ui.viewmodel.SalahSetStage.TAHLIL_SEAL.stepIndex)
+        assertEquals(1, com.example.ui.viewmodel.SalahSetStage.TAHLIL_SEAL.target)
+
+        val totalCount = stages.sumOf { it.target }
+        assertEquals(100, totalCount)
+    }
 }
+

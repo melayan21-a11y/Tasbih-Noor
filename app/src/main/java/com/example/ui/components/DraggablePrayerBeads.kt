@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import com.example.ui.theme.GoldDark
 import com.example.ui.theme.GoldLight
@@ -69,7 +70,8 @@ enum class BeadMaterial(
     val baseColor: Color,
     val lightColor: Color,
     val darkColor: Color,
-    val accentColor: Color
+    val accentColor: Color,
+    val isTextured: Boolean = false
 ) {
     OLIVE_WOOD(
         displayName = "Madinah Olive Wood",
@@ -77,6 +79,14 @@ enum class BeadMaterial(
         lightColor = OliveWoodLight,
         darkColor = OliveWoodDark,
         accentColor = GoldPrimary
+    ),
+    TIGER_EYE(
+        displayName = "Tiger's Eye Agate",
+        baseColor = Color(0xFF8C531B),
+        lightColor = Color(0xFFE5A836),
+        darkColor = Color(0xFF381905),
+        accentColor = GoldLight,
+        isTextured = true
     ),
     ROYAL_JADE(
         displayName = "Royal Emerald Jade",
@@ -321,6 +331,113 @@ private fun DrawScope.drawLarge3DBead(
         radius = radius,
         center = center
     )
+
+    // 3b. Natural Mineral Texture (Tiger's Eye Agate chatoyancy bands & striations)
+    if (material == BeadMaterial.TIGER_EYE && !isMarker) {
+        val clipP = Path().apply {
+            addOval(androidx.compose.ui.geometry.Rect(center.x - radius, center.y - radius, center.x + radius, center.y + radius))
+        }
+        clipPath(clipP) {
+            // Silky chatoyancy light band
+            val silkBand = Path().apply {
+                moveTo(center.x - radius * 1.2f, center.y - radius * 0.45f)
+                cubicTo(
+                    center.x - radius * 0.3f, center.y - radius * 0.6f,
+                    center.x + radius * 0.4f, center.y - radius * 0.1f,
+                    center.x + radius * 1.2f, center.y - radius * 0.25f
+                )
+                lineTo(center.x + radius * 1.2f, center.y + radius * 0.35f)
+                cubicTo(
+                    center.x + radius * 0.4f, center.y + radius * 0.5f,
+                    center.x - radius * 0.3f, center.y + radius * 0.05f,
+                    center.x - radius * 1.2f, center.y + radius * 0.2f
+                )
+                close()
+            }
+            drawPath(
+                path = silkBand,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFFE5A638).copy(alpha = 0.85f),
+                        Color(0xFFFFEE93).copy(alpha = 0.95f),
+                        Color(0xFF9E5716).copy(alpha = 0.70f)
+                    ),
+                    start = Offset(center.x - radius, center.y - radius * 0.5f),
+                    end = Offset(center.x + radius, center.y + radius * 0.5f)
+                )
+            )
+
+            // Deep rich chocolate-espresso vein streak
+            val veinStreak = Path().apply {
+                moveTo(center.x - radius * 1.2f, center.y + radius * 0.25f)
+                cubicTo(
+                    center.x - radius * 0.2f, center.y + radius * 0.15f,
+                    center.x + radius * 0.5f, center.y + radius * 0.65f,
+                    center.x + radius * 1.2f, center.y + radius * 0.5f
+                )
+                lineTo(center.x + radius * 1.2f, center.y + radius * 0.75f)
+                cubicTo(
+                    center.x + radius * 0.5f, center.y + radius * 0.9f,
+                    center.x - radius * 0.2f, center.y + radius * 0.4f,
+                    center.x - radius * 1.2f, center.y + radius * 0.5f
+                )
+                close()
+            }
+            drawPath(
+                path = veinStreak,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF2C1304).copy(alpha = 0.85f),
+                        Color(0xFF4A2308).copy(alpha = 0.75f),
+                        Color(0xFF220D02).copy(alpha = 0.90f)
+                    ),
+                    start = Offset(center.x - radius, center.y),
+                    end = Offset(center.x + radius, center.y + radius)
+                )
+            )
+
+            // Fine chatoyancy micro-grain lines
+            drawLine(
+                color = Color(0xFFFFF3C4).copy(alpha = 0.55f),
+                start = Offset(center.x - radius * 0.85f, center.y - radius * 0.12f),
+                end = Offset(center.x + radius * 0.85f, center.y + radius * 0.08f),
+                strokeWidth = 2.0f
+            )
+            drawLine(
+                color = Color(0xFF381A05).copy(alpha = 0.60f),
+                start = Offset(center.x - radius * 0.9f, center.y + radius * 0.18f),
+                end = Offset(center.x + radius * 0.8f, center.y + radius * 0.38f),
+                strokeWidth = 2.5f
+            )
+            drawLine(
+                color = Color(0xFFFFD54F).copy(alpha = 0.45f),
+                start = Offset(center.x - radius * 0.75f, center.y - radius * 0.32f),
+                end = Offset(center.x + radius * 0.7f, center.y - radius * 0.12f),
+                strokeWidth = 1.8f
+            )
+        }
+    }
+
+    // 3c. Organic woodgrain rings for Olive Wood
+    if (material == BeadMaterial.OLIVE_WOOD && !isMarker) {
+        val clipP = Path().apply {
+            addOval(androidx.compose.ui.geometry.Rect(center.x - radius, center.y - radius, center.x + radius, center.y + radius))
+        }
+        clipPath(clipP) {
+            drawCircle(
+                color = Color(0xFF4E2A0E).copy(alpha = 0.22f),
+                radius = radius * 0.70f,
+                center = Offset(center.x - radius * 0.25f, center.y),
+                style = Stroke(width = 1.6f)
+            )
+            drawCircle(
+                color = Color(0xFF4E2A0E).copy(alpha = 0.18f),
+                radius = radius * 0.45f,
+                center = Offset(center.x - radius * 0.25f, center.y),
+                style = Stroke(width = 1.4f)
+            )
+        }
+    }
 
     // 4. Bead Core Cord Hole
     drawCircle(

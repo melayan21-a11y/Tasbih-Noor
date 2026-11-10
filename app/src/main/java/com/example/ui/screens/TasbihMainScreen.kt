@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,13 +67,16 @@ import com.example.ui.theme.EmeraldDeep
 import com.example.ui.theme.EmeraldPrimary
 import com.example.ui.theme.GoldLight
 import com.example.ui.theme.GoldPrimary
+import com.example.data.model.AthkarType
 import com.example.ui.theme.NightBackground
+import com.example.ui.viewmodel.SalahSetStage
 import com.example.ui.viewmodel.TasbihViewModel
 
 @Composable
 fun TasbihMainScreen(
     viewModel: TasbihViewModel,
     onNavigateToLibrary: () -> Unit,
+    onOpenAthkarReader: (AthkarType) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val selectedDhikr by viewModel.selectedDhikr.collectAsState()
@@ -83,6 +87,16 @@ fun TasbihMainScreen(
     val lapsCompleted by viewModel.lapsCompleted.collectAsState()
     val targetCount by viewModel.targetCount.collectAsState()
     val todayTotal by viewModel.todayTotal.collectAsState()
+
+    val isSalahSetMode by viewModel.isSalahSetMode.collectAsState()
+    val salahSetStage by viewModel.salahSetStage.collectAsState()
+
+    val setCumulativeCount = when (salahSetStage) {
+        SalahSetStage.SUBHANALLAH -> currentCount
+        SalahSetStage.ALHAMDULILLAH -> 33 + currentCount
+        SalahSetStage.ALLAHU_AKBAR -> 66 + currentCount
+        SalahSetStage.TAHLIL_SEAL -> 99 + currentCount
+    }
 
     val isNightMode by viewModel.isNightMode.collectAsState()
     val beadMaterial by viewModel.beadMaterial.collectAsState()
@@ -188,9 +202,102 @@ fun TasbihMainScreen(
                 }
             }
 
-            // Dhikr Banner Card (Tappable to change Dhikr)
+            // Daily Adhkar Companion Shortcut
+            val currentHour = remember { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
+            val isMorning = currentHour < 14
+            val athkarTypeToRead = if (isMorning) AthkarType.MORNING else AthkarType.EVENING
+
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = if (isNightMode) Color(0xFF0F362C).copy(alpha = 0.9f) else Color(0xFFF1F8F4),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (isNightMode) GoldPrimary.copy(alpha = 0.4f) else EmeraldPrimary.copy(alpha = 0.25f)
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clickable { onOpenAthkarReader(athkarTypeToRead) }
+                    .testTag("daily_athkar_shortcut")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = if (isMorning) "🌅" else "🌇", fontSize = 15.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isMorning) "Morning Adhkar • أذكار الصباح" else "Evening Adhkar • أذكار المساء",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isNightMode) GoldLight else EmeraldDeep
+                        )
+                    }
+                    Text(
+                        text = "Read & Count →",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = GoldPrimary
+                    )
+                }
+            }
+
+            // Quick After-Salah Chain Trigger Pill (shown when not already in set mode)
+            if (!isSalahSetMode) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isNightMode) Color(0xFF133F34).copy(alpha = 0.8f) else Color(0xFFE8F5E9),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isNightMode) GoldPrimary.copy(alpha = 0.35f) else Color(0xFFA5D6A7)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp)
+                        .clickable { viewModel.startSalahSetMode() }
+                        .testTag("start_salah_set_pill")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "🕌", fontSize = 14.sp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "After-Salah Chain (33 SubhanAllah ➔ 33 Alhamdulillah ➔ 33 Allahu Akbar ➔ 1 Seal)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isNightMode) GoldLight else EmeraldDeep,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Text(
+                            text = "Start ➔",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldPrimary,
+                            modifier = Modifier.padding(start = 6.dp)
+                        )
+                    }
+                }
+            }
+
+            // Dhikr Banner Card (Tappable to change Dhikr or Shows Current Set Step)
             Card(
-                onClick = onNavigateToLibrary,
+                onClick = {
+                    if (isSalahSetMode) {
+                        // In set mode, allow user to view library or stay
+                        onNavigateToLibrary()
+                    } else {
+                        onNavigateToLibrary()
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("current_dhikr_card"),
@@ -210,7 +317,7 @@ fun TasbihMainScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Category & change affordance
+                    // Category & mode affordance
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -218,50 +325,73 @@ fun TasbihMainScreen(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = if (isNightMode) GoldPrimary.copy(alpha = 0.2f) else EmeraldPrimary.copy(alpha = 0.1f)
+                            color = if (isSalahSetMode) {
+                                if (isNightMode) GoldPrimary.copy(alpha = 0.25f) else Color(0xFFFFECB3)
+                            } else {
+                                if (isNightMode) GoldPrimary.copy(alpha = 0.2f) else EmeraldPrimary.copy(alpha = 0.1f)
+                            }
                         ) {
                             Text(
-                                text = currentDhikr?.category ?: "Daily",
+                                text = if (isSalahSetMode) "🕌 After Salah Set • Step ${salahSetStage.stepIndex}/4" else (currentDhikr?.category ?: "Daily"),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = if (isNightMode) GoldLight else EmeraldPrimary,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                             )
                         }
-                        Text(
-                            text = "Change Dhikr ▾",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = if (isNightMode) GoldPrimary else EmeraldPrimary
-                        )
+
+                        if (isSalahSetMode) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isNightMode) Color(0xFF1E3830) else Color(0xFFFFEBEE),
+                                modifier = Modifier.clickable { viewModel.exitSalahSetMode() }
+                            ) {
+                                Text(
+                                    text = "Exit Set ✕",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFFC62828),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = "Change Dhikr ▾",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (isNightMode) GoldPrimary else EmeraldPrimary
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
 
                     // Arabic Calligraphy Text
                     Text(
-                        text = currentDhikr?.arabicText ?: "سُبْحَانَ اللَّهِ",
-                        fontSize = 26.sp,
+                        text = if (isSalahSetMode) salahSetStage.arabicText else (currentDhikr?.arabicText ?: "سُبْحَانَ اللَّهِ"),
+                        fontSize = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 20.sp else 26.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isNightMode) GoldLight else EmeraldDeep,
                         textAlign = TextAlign.Center,
-                        lineHeight = 36.sp
+                        lineHeight = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 30.sp else 36.sp
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
 
                     // Transliteration
                     Text(
-                        text = currentDhikr?.transliteration ?: "SubhanAllah",
-                        fontSize = 15.sp,
+                        text = if (isSalahSetMode) salahSetStage.transliteration else (currentDhikr?.transliteration ?: "SubhanAllah"),
+                        fontSize = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 13.sp else 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (isNightMode) Color.White.copy(alpha = 0.9f) else Color(0xFF263238),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
 
                     // English Translation
                     Text(
-                        text = currentDhikr?.englishTranslation ?: "Glory be to Allah",
+                        text = if (isSalahSetMode) salahSetStage.translation else (currentDhikr?.englishTranslation ?: "Glory be to Allah"),
                         fontSize = 12.sp,
                         color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color(0xFF546E7A),
                         textAlign = TextAlign.Center,
@@ -271,44 +401,92 @@ fun TasbihMainScreen(
                 }
             }
 
-            // Target selector row (33, 99, 100, Free)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                listOf(33, 99, 100, 0).forEach { target ->
-                    val isSelected = targetCount == target
-                    val label = if (target == 0) "Free ∞" else "$target"
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (isSelected) {
-                            if (isNightMode) GoldPrimary else EmeraldPrimary
-                        } else {
-                            if (isNightMode) Color(0xFF10332B).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.7f)
-                        },
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            if (isSelected) GoldLight else Color.Transparent
-                        ),
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .clickable { viewModel.setTargetCount(target) }
-                            .testTag("target_chip_$target")
-                    ) {
-                        Text(
-                            text = label,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) {
-                                if (isNightMode) NightBackground else Color.White
-                            } else {
-                                if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.DarkGray
+            // Stepper / Target selector row
+            if (isSalahSetMode) {
+                // 4-Step Chained After-Salah Progress Stepper
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    listOf(
+                        SalahSetStage.SUBHANALLAH to "1. SubhanAllah (33)",
+                        SalahSetStage.ALHAMDULILLAH to "2. Alhamdulillah (33)",
+                        SalahSetStage.ALLAHU_AKBAR to "3. Allahu Akbar (33)",
+                        SalahSetStage.TAHLIL_SEAL to "4. Seal (1)"
+                    ).forEach { (stage, label) ->
+                        val isCurrent = salahSetStage == stage
+                        val isPast = salahSetStage.stepIndex > stage.stepIndex
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = when {
+                                isCurrent -> if (isNightMode) GoldPrimary else EmeraldPrimary
+                                isPast -> if (isNightMode) Color(0xFF133F34) else Color(0xFFE8F5E9)
+                                else -> if (isNightMode) Color(0xFF0C241D) else Color(0xFFF1F5F3)
                             },
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (isCurrent) GoldLight else if (isPast) (if (isNightMode) Color(0xFF1E5244) else Color(0xFFA5D6A7)) else Color.Transparent
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = if (isPast) "✓ ${stage.stepIndex}" else if (isCurrent) "▶ ${stage.stepIndex}" else "${stage.stepIndex}",
+                                fontSize = 11.sp,
+                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                                color = when {
+                                    isCurrent -> if (isNightMode) NightBackground else Color.White
+                                    isPast -> if (isNightMode) GoldLight else EmeraldDeep
+                                    else -> if (isNightMode) Color.White.copy(alpha = 0.5f) else Color.Gray
+                                },
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(vertical = 5.dp)
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Target selector row (33, 99, 100, Free)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    listOf(33, 99, 100, 0).forEach { target ->
+                        val isSelected = targetCount == target
+                        val label = if (target == 0) "Free ∞" else "$target"
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (isSelected) {
+                                if (isNightMode) GoldPrimary else EmeraldPrimary
+                            } else {
+                                if (isNightMode) Color(0xFF10332B).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.7f)
+                            },
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (isSelected) GoldLight else Color.Transparent
+                            ),
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp)
+                                .clickable { viewModel.setTargetCount(target) }
+                                .testTag("target_chip_$target")
+                        ) {
+                            Text(
+                                text = label,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) {
+                                    if (isNightMode) NightBackground else Color.White
+                                } else {
+                                    if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.DarkGray
+                                },
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -343,12 +521,19 @@ fun TasbihMainScreen(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = if (targetCount > 0) "/ $targetCount" else "Target: ∞",
+                            text = if (isSalahSetMode) "/ ${salahSetStage.target}" else (if (targetCount > 0) "/ $targetCount" else "Target: ∞"),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.Gray
                         )
-                        if (lapsCompleted > 0) {
+                        if (isSalahSetMode) {
+                            Text(
+                                text = "Set: $setCumulativeCount/100",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldPrimary
+                            )
+                        } else if (lapsCompleted > 0) {
                             Text(
                                 text = "Laps: $lapsCompleted",
                                 fontSize = 11.sp,

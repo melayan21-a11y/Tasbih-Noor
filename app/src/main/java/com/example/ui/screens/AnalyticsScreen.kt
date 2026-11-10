@@ -49,8 +49,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.testTag
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
@@ -436,8 +438,13 @@ fun AnalyticsScreen(
                         fontWeight = FontWeight.Bold,
                         color = if (isNightMode) GoldLight else EmeraldDeep
                     )
+                    Text(
+                        text = "Your top supplications ranked by total recitations",
+                        fontSize = 12.sp,
+                        color = if (isNightMode) Color.White.copy(alpha = 0.65f) else Color.Gray
+                    )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     if (typeStats.isEmpty()) {
                         Text(
@@ -448,36 +455,98 @@ fun AnalyticsScreen(
                         )
                     } else {
                         val maxCount = typeStats.maxOfOrNull { it.totalCount } ?: 1
-                        typeStats.take(5).forEach { stat ->
-                            Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = stat.dhikrTitle,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = if (isNightMode) Color.White else Color(0xFF263238)
-                                    )
-                                    Text(
-                                        text = "${stat.totalCount}",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isNightMode) GoldLight else EmeraldPrimary
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(3.dp))
-                                LinearProgressIndicator(
-                                    progress = { stat.totalCount.toFloat() / maxCount },
+                        typeStats.take(5).forEachIndexed { index, stat ->
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (isNightMode) Color(0xFF0D2C23) else Color(0xFFF7FAF8),
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (isNightMode) Color(0xFF164739) else Color(0xFFE5EDE8)
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            ) {
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(6.dp)
-                                        .clip(RoundedCornerShape(3.dp)),
-                                    color = if (isNightMode) GoldPrimary else EmeraldPrimary,
-                                    trackColor = if (isNightMode) Color(0xFF143B30) else Color(0xFFE0EAE4),
-                                    strokeCap = StrokeCap.Round
-                                )
+                                        .padding(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Rank Badge
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = when (index) {
+                                                0 -> GoldPrimary
+                                                1 -> if (isNightMode) Color(0xFF1B614D) else EmeraldPrimary
+                                                else -> if (isNightMode) Color(0xFF144436) else Color(0xFFD6E4DC)
+                                            },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = "${index + 1}",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = when (index) {
+                                                        0 -> Color(0xFF071914)
+                                                        1 -> Color.White
+                                                        else -> if (isNightMode) GoldLight else EmeraldDeep
+                                                    }
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.width(10.dp))
+
+                                        // Dhikr Title (Clutter-free, Single Line with Ellipsis)
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = stat.dhikrTitle,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = if (isNightMode) Color.White else Color(0xFF263238),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(8.dp))
+
+                                        // Count & Label
+                                        Row(verticalAlignment = Alignment.Bottom) {
+                                            Text(
+                                                text = "${stat.totalCount}",
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isNightMode) GoldLight else EmeraldDeep
+                                            )
+                                            Text(
+                                                text = " times",
+                                                fontSize = 10.sp,
+                                                color = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray,
+                                                modifier = Modifier.padding(bottom = 1.dp, start = 2.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    // Clean proportional progress bar
+                                    LinearProgressIndicator(
+                                        progress = { stat.totalCount.toFloat() / maxCount },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(5.dp)
+                                            .clip(RoundedCornerShape(3.dp)),
+                                        color = if (index == 0) GoldPrimary else (if (isNightMode) GoldLight.copy(alpha = 0.8f) else EmeraldPrimary),
+                                        trackColor = if (isNightMode) Color(0xFF081C16) else Color(0xFFE2EBE5),
+                                        strokeCap = StrokeCap.Round
+                                    )
+                                }
                             }
                         }
                     }
@@ -485,7 +554,7 @@ fun AnalyticsScreen(
             }
         }
 
-        // Spiritual Milestones & Badges
+        // Spiritual Milestones & Perpetual Devotion Mastery
         item {
             Card(
                 modifier = Modifier
@@ -506,29 +575,148 @@ fun AnalyticsScreen(
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.EmojiEvents,
-                            contentDescription = "Milestones",
-                            tint = GoldPrimary
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Spiritual Milestones",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isNightMode) GoldLight else EmeraldDeep
-                        )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.EmojiEvents,
+                                contentDescription = "Milestones",
+                                tint = GoldPrimary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Spiritual Milestones & Ranks",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isNightMode) GoldLight else EmeraldDeep
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    // Perpetual Spiritual Mastery Rank Card
+                    val devotionLevel = (lifetimeTotal / 2500) + 1
+                    val currentLevelProgress = lifetimeTotal % 2500
+                    val currentLevelTarget = 2500
+                    val rankTitle = when {
+                        devotionLevel >= 40 -> "Al-Muqarrab (Dhikr Luminary)"
+                        devotionLevel >= 20 -> "Taj adh-Dhikr (Crown of Remembrance)"
+                        devotionLevel >= 10 -> "Al-Dhakir al-Akbar (Venerable Devotee)"
+                        devotionLevel >= 5 -> "Al-Mustaghfir (Steadfast Supplicant)"
+                        else -> "Al-Musabbih (Devout Seeker)"
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (isNightMode) Color(0xFF10362B) else Color(0xFFF1F8F4),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isNightMode) GoldPrimary.copy(alpha = 0.4f) else Color(0xFFC8E6C9)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = GoldPrimary,
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Default.WorkspacePremium,
+                                                contentDescription = null,
+                                                tint = Color(0xFF071914),
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "Rank Tier $devotionLevel: $rankTitle",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isNightMode) GoldLight else EmeraldDeep
+                                        )
+                                        Text(
+                                            text = "Perpetual Devotion Horizon",
+                                            fontSize = 11.sp,
+                                            color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.Gray
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "To Level ${devotionLevel + 1}",
+                                    fontSize = 11.sp,
+                                    color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.Gray
+                                )
+                                Text(
+                                    text = "$currentLevelProgress / $currentLevelTarget Adhkar",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isNightMode) GoldLight else EmeraldPrimary
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            LinearProgressIndicator(
+                                progress = { currentLevelProgress.toFloat() / currentLevelTarget },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = GoldPrimary,
+                                trackColor = if (isNightMode) Color(0xFF0A221B) else Color(0xFFDEE7E1),
+                                strokeCap = StrokeCap.Round
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "Foundation & Devotion Milestones",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isNightMode) Color.White else Color(0xFF263238)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     val milestones = listOf(
-                        Milestone("Seed of Jannah", "Recite 100 total Adhkar", lifetimeTotal >= 100),
-                        Milestone("Steadfast Heart", "Maintain a 3-day Dhikr streak", streakInfo.longestStreak >= 3),
-                        Milestone("Noor of Dawn", "Maintain a 7-day Dhikr streak", streakInfo.longestStreak >= 7),
-                        Milestone("Tasbih Devotee", "Recite 1,000 total Adhkar", lifetimeTotal >= 1000),
-                        Milestone("Constant Remembrance", "Recite 10,000 total Adhkar", lifetimeTotal >= 10000)
+                        Milestone("Seed of Jannah", "Recite 100 total Adhkar", lifetimeTotal >= 100, "100"),
+                        Milestone("Steadfast Heart", "Maintain a 3-day Dhikr streak", streakInfo.longestStreak >= 3, "3d"),
+                        Milestone("Noor of Dawn", "Maintain a 7-day Dhikr streak", streakInfo.longestStreak >= 7, "7d"),
+                        Milestone("Tasbih Devotee", "Recite 1,000 total Adhkar", lifetimeTotal >= 1000, "1K"),
+                        Milestone("Fortnight of Light", "Maintain a 14-day Dhikr streak", streakInfo.longestStreak >= 14, "14d"),
+                        Milestone("Constant Remembrance", "Recite 10,000 total Adhkar", lifetimeTotal >= 10000, "10K"),
+                        Milestone("Zakireen & Zakirat", "Recite 25,000 total Adhkar (Quran 33:35)", lifetimeTotal >= 25000, "25K"),
+                        Milestone("Istiqamah Master", "Maintain a 30-day continuous Dhikr streak", streakInfo.longestStreak >= 30, "30d"),
+                        Milestone("Crown of Dhikr", "Recite 50,000 total Adhkar", lifetimeTotal >= 50000, "50K"),
+                        Milestone("Al-Qalb as-Salim", "Recite 100,000 total Adhkar", lifetimeTotal >= 100000, "100K")
                     )
 
                     milestones.forEach { m ->
@@ -540,14 +728,14 @@ fun AnalyticsScreen(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = if (m.isAchieved) GoldPrimary else Color.Gray.copy(alpha = 0.3f),
+                                color = if (m.isAchieved) GoldPrimary else (if (isNightMode) Color(0xFF143B30) else Color(0xFFE0E0E0)),
                                 modifier = Modifier.size(28.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = Icons.Default.Star,
                                         contentDescription = null,
-                                        tint = if (m.isAchieved) Color(0xFF071914) else Color.White,
+                                        tint = if (m.isAchieved) Color(0xFF071914) else Color.Gray,
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
@@ -558,7 +746,7 @@ fun AnalyticsScreen(
                                     text = m.title,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = if (m.isAchieved) (if (isNightMode) GoldLight else EmeraldDeep) else Color.Gray
+                                    color = if (m.isAchieved) (if (isNightMode) GoldLight else EmeraldDeep) else (if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.DarkGray)
                                 )
                                 Text(
                                     text = m.description,
@@ -567,11 +755,25 @@ fun AnalyticsScreen(
                                 )
                             }
                             if (m.isAchieved) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isNightMode) Color(0xFF133F34) else Color(0xFFE8F5E9),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, GoldPrimary.copy(alpha = 0.5f))
+                                ) {
+                                    Text(
+                                        text = "Unlocked ✨",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldPrimary,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            } else {
                                 Text(
-                                    text = "Unlocked ✨",
+                                    text = m.badgeTag,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = GoldPrimary
+                                    color = if (isNightMode) Color.White.copy(alpha = 0.4f) else Color.LightGray
                                 )
                             }
                         }
@@ -588,7 +790,8 @@ fun AnalyticsScreen(
 private data class Milestone(
     val title: String,
     val description: String,
-    val isAchieved: Boolean
+    val isAchieved: Boolean,
+    val badgeTag: String = ""
 )
 
 @Composable
