@@ -1,0 +1,6 @@
+{
+  "name": "Tasbih Noor",
+  "description": "Islamic prayer beads app with interactive draggable beads on a string, haptic feedback, audio recitations, dark mode night recitations, consistency analytics, and daily reminders.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
