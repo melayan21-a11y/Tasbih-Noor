@@ -102,15 +102,9 @@ class TasbihAppWidgetProvider : AppWidgetProvider() {
                 val prefs = TasbihPreferences(context)
                 val views = RemoteViews(context.packageName, R.layout.widget_tasbih)
 
-                // Count & Streak
-                val count = prefs.widgetTodayCount
+                // Streak Badge
                 val streak = maxOf(1, prefs.widgetStreakDays)
-                views.setTextViewText(R.id.widget_count_text, count.toString())
                 views.setTextViewText(R.id.widget_streak_text, "🔥 ${streak}d")
-
-                // Dhikr Title
-                val title = if (prefs.isSalahSetMode) "After-Salah Set" else "Tasbih"
-                views.setTextViewText(R.id.widget_dhikr_title, title)
 
                 // Inspiring Spiritual Athkar / Dua / Reminder
                 val reminder = WidgetReminders.getReminder(prefs.widgetReminderIndex)
@@ -118,7 +112,7 @@ class TasbihAppWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(R.id.widget_reminder_arabic, reminder.arabic)
                 views.setTextViewText(R.id.widget_reminder_english, reminder.translation)
 
-                // Shuffle Next Reminder PendingIntent
+                // Shuffle Next Reminder PendingIntent (on "↻ Next Dua" or clicking reminder card)
                 val shuffleIntent = Intent(context, TasbihAppWidgetProvider::class.java).apply {
                     action = ACTION_WIDGET_NEXT_REMINDER
                 }
@@ -131,19 +125,7 @@ class TasbihAppWidgetProvider : AppWidgetProvider() {
                 views.setOnClickPendingIntent(R.id.widget_btn_shuffle, shufflePendingIntent)
                 views.setOnClickPendingIntent(R.id.widget_reminder_card, shufflePendingIntent)
 
-                // Tap Bead PendingIntent
-                val tapIntent = Intent(context, TasbihAppWidgetProvider::class.java).apply {
-                    action = ACTION_WIDGET_TAP_BEAD
-                }
-                val tapPendingIntent = PendingIntent.getBroadcast(
-                    context,
-                    0,
-                    tapIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                views.setOnClickPendingIntent(R.id.widget_btn_tap, tapPendingIntent)
-
-                // Open App PendingIntent
+                // Open App PendingIntent (on "Open Noor ➔" or tapping root)
                 val openIntent = Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }

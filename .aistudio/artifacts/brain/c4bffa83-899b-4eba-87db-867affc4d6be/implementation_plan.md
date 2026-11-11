@@ -26,13 +26,12 @@ The app's design philosophy is centered around **tranquility, spiritual devotion
 - Visual 4-stage stepper HUD (`✓ 1`, `✓ 2`, `▶ 3`, `4`) and total progress (`Set: 47/100`).
 - Dedicated launch cards on both the main screen and in the Adhkar Library.
 
-### C. Android Home Screen Widget (AppWidget with Athkar, Duas & Reminders)
-- **`TasbihAppWidgetProvider`**: High-performance interactive home screen widget (`3x2` / `horizontal|vertical`).
-- **Dynamic Spiritual Athkar & Dua Display**: Embedded card featuring a curated collection of authentic Qur'anic Duas, Daily Athkar, and Prophetic reminders (`WidgetReminders`). Displays category tags, Arabic calligraphy text, and English transliterations & translations.
-- **"↻ Next Dua" One-Tap Shuffle**: Direct interactive button on the widget allowing users to shuffle or cycle through spiritual supplications right from their home screen.
-- **Real-Time Synchronized Progress**: Displays today's recitation count and active daily streak count (`🔥 X Days`).
-- **One-Tap Quick Bead**: Interactive "+1 Bead" button on the widget allows quick dhikr taps directly from the home screen with haptic confirmation and instant Room persistence without needing to launch the app.
-- **Direct App Launch**: "Open ➔" shortcut to transition directly into the prayer beads screen.
+### C. Visual Spiritual Remembrance Widget (Home Screen Athkar & Duas)
+- **`TasbihAppWidgetProvider`**: Dedicated visual home screen widget (`3x2` / `horizontal|vertical`) designed exclusively for peaceful spiritual remembrance and daily reminders.
+- **Enlarged High-Legibility Typography**: Arabic calligraphy font increased to **20sp** bold with expanded multi-line support (`maxLines="3"`), English translation & transliteration increased to **13sp** with soft emerald contrast (`#D6EFE0`), and prominent category tags (`11sp` bold gold).
+- **Pure Visual Focus (Removed Bead Button)**: Removed the tiny `+1 Bead` button and counter clutter, dedicating 100% of the widget canvas to the sacred words and translation.
+- **"↻ Next Dua" Instant Shuffle**: Direct interactive button (and tap-on-card) allowing users to shuffle through 20+ authentic Qur'anic Duas, Daily Athkar, and Prophetic reminders with subtle haptic response.
+- **One-Tap App Access**: Seamless "Open Noor ➔" shortcut to transition directly into the prayer beads screen.
 
 ### D. Dedicated Real-Time Qibla Compass (اتجاه القبلة الشريفة)
 - **Dedicated Full-Bleed Experience**: Streamlined the third navigation tab into a pure, uncluttered Qibla Compass screen (`QiblaScreen.kt`), eliminating the prayer times timetable and calculation selectors while preserving the compass.
