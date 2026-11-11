@@ -17,11 +17,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -47,8 +49,12 @@ import com.example.data.model.AthkarType
 import com.example.ui.screens.AthkarReaderScreen
 import com.example.ui.screens.AnalyticsScreen
 import com.example.ui.screens.DhikrLibraryScreen
+import com.example.ui.screens.PrayerAndQiblaScreen
+import com.example.ui.screens.QiblaScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.TasbihMainScreen
+import com.example.ui.theme.DayEmeraldDeep
+import com.example.ui.theme.DayGoldAccent
 import com.example.ui.theme.EmeraldDeep
 import com.example.ui.theme.EmeraldPrimary
 import com.example.ui.theme.GoldLight
@@ -60,6 +66,7 @@ import com.example.ui.viewmodel.TasbihViewModel
 enum class MainTab {
     TASBIH,
     LIBRARY,
+    PRAYER_QIBLA,
     ANALYTICS,
     SETTINGS
 }
@@ -120,7 +127,7 @@ fun TasbihApp(viewModel: TasbihViewModel) {
                 modifier = Modifier
                     .windowInsetsPadding(WindowInsets.navigationBars)
                     .testTag("main_bottom_nav"),
-                containerColor = if (isNightMode) Color(0xFF061813) else Color.White,
+                containerColor = if (isNightMode) Color(0xFF061813) else Color(0xFFFFFDF8),
                 tonalElevation = 8.dp
             ) {
                 // 1. Tasbih Bead Tab
@@ -135,11 +142,11 @@ fun TasbihApp(viewModel: TasbihViewModel) {
                     },
                     label = { Text("Tasbih", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = if (isNightMode) Color(0xFF061813) else Color.White,
-                        selectedTextColor = if (isNightMode) GoldPrimary else EmeraldPrimary,
-                        indicatorColor = if (isNightMode) GoldPrimary else EmeraldPrimary,
-                        unselectedIconColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray,
-                        unselectedTextColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray
+                        selectedIconColor = if (isNightMode) Color(0xFF061813) else DayEmeraldDeep,
+                        selectedTextColor = if (isNightMode) GoldPrimary else DayEmeraldDeep,
+                        indicatorColor = if (isNightMode) GoldPrimary else Color(0xFFE8DAC0),
+                        unselectedIconColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color(0xFF7A6538),
+                        unselectedTextColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color(0xFF7A6538)
                     ),
                     modifier = Modifier.testTag("nav_tab_tasbih")
                 )
@@ -156,16 +163,37 @@ fun TasbihApp(viewModel: TasbihViewModel) {
                     },
                     label = { Text("Adhkar", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = if (isNightMode) Color(0xFF061813) else Color.White,
-                        selectedTextColor = if (isNightMode) GoldPrimary else EmeraldPrimary,
-                        indicatorColor = if (isNightMode) GoldPrimary else EmeraldPrimary,
-                        unselectedIconColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray,
-                        unselectedTextColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray
+                        selectedIconColor = if (isNightMode) Color(0xFF061813) else DayEmeraldDeep,
+                        selectedTextColor = if (isNightMode) GoldPrimary else DayEmeraldDeep,
+                        indicatorColor = if (isNightMode) GoldPrimary else Color(0xFFE8DAC0),
+                        unselectedIconColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color(0xFF7A6538),
+                        unselectedTextColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color(0xFF7A6538)
                     ),
                     modifier = Modifier.testTag("nav_tab_library")
                 )
 
-                // 3. Analytics Tab
+                // 3. Prayer & Qibla Tab
+                NavigationBarItem(
+                    selected = currentTab == MainTab.PRAYER_QIBLA,
+                    onClick = { currentTab = MainTab.PRAYER_QIBLA },
+                    icon = {
+                        Icon(
+                            imageVector = if (currentTab == MainTab.PRAYER_QIBLA) Icons.Filled.Explore else Icons.Outlined.Explore,
+                            contentDescription = "Qibla Compass"
+                        )
+                    },
+                    label = { Text("Qibla", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = if (isNightMode) Color(0xFF061813) else DayEmeraldDeep,
+                        selectedTextColor = if (isNightMode) GoldPrimary else DayEmeraldDeep,
+                        indicatorColor = if (isNightMode) GoldPrimary else Color(0xFFE8DAC0),
+                        unselectedIconColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color(0xFF7A6538),
+                        unselectedTextColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color(0xFF7A6538)
+                    ),
+                    modifier = Modifier.testTag("nav_tab_qibla")
+                )
+
+                // 4. Analytics Tab
                 NavigationBarItem(
                     selected = currentTab == MainTab.ANALYTICS,
                     onClick = { currentTab = MainTab.ANALYTICS },
@@ -177,16 +205,16 @@ fun TasbihApp(viewModel: TasbihViewModel) {
                     },
                     label = { Text("Analytics", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = if (isNightMode) Color(0xFF061813) else Color.White,
-                        selectedTextColor = if (isNightMode) GoldPrimary else EmeraldPrimary,
-                        indicatorColor = if (isNightMode) GoldPrimary else EmeraldPrimary,
-                        unselectedIconColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray,
-                        unselectedTextColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray
+                        selectedIconColor = if (isNightMode) Color(0xFF061813) else DayEmeraldDeep,
+                        selectedTextColor = if (isNightMode) GoldPrimary else DayEmeraldDeep,
+                        indicatorColor = if (isNightMode) GoldPrimary else Color(0xFFE8DAC0),
+                        unselectedIconColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color(0xFF7A6538),
+                        unselectedTextColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color(0xFF7A6538)
                     ),
                     modifier = Modifier.testTag("nav_tab_analytics")
                 )
 
-                // 4. Settings & Reminders Tab
+                // 5. Settings & Reminders Tab
                 NavigationBarItem(
                     selected = currentTab == MainTab.SETTINGS,
                     onClick = { currentTab = MainTab.SETTINGS },
@@ -198,11 +226,11 @@ fun TasbihApp(viewModel: TasbihViewModel) {
                     },
                     label = { Text("Settings", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = if (isNightMode) Color(0xFF061813) else Color.White,
-                        selectedTextColor = if (isNightMode) GoldPrimary else EmeraldPrimary,
-                        indicatorColor = if (isNightMode) GoldPrimary else EmeraldPrimary,
-                        unselectedIconColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray,
-                        unselectedTextColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray
+                        selectedIconColor = if (isNightMode) Color(0xFF061813) else DayEmeraldDeep,
+                        selectedTextColor = if (isNightMode) GoldPrimary else DayEmeraldDeep,
+                        indicatorColor = if (isNightMode) GoldPrimary else Color(0xFFE8DAC0),
+                        unselectedIconColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color(0xFF7A6538),
+                        unselectedTextColor = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color(0xFF7A6538)
                     ),
                     modifier = Modifier.testTag("nav_tab_settings")
                 )
@@ -230,6 +258,9 @@ fun TasbihApp(viewModel: TasbihViewModel) {
                         },
                         onOpenAthkarReader = { activeAthkarType = it }
                     )
+                }
+                MainTab.PRAYER_QIBLA -> {
+                    QiblaScreen(viewModel = viewModel)
                 }
                 MainTab.ANALYTICS -> {
                     AnalyticsScreen(viewModel = viewModel)

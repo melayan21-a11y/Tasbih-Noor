@@ -9,6 +9,16 @@ import com.example.data.dao.DhikrTypeStat
 import com.example.data.model.DhikrItem
 import com.example.data.repository.StreakInfo
 import com.example.data.repository.TasbihRepository
+import com.example.data.prayer.CalculationMethod
+import com.example.data.prayer.CityLocation
+import com.example.data.prayer.CityLocations
+import com.example.data.prayer.CompassSensorManager
+import com.example.data.prayer.JuristicMethod
+import com.example.data.prayer.PrayerCalculator
+import com.example.data.prayer.PrayerTimesResult
+import com.example.data.backup.BackupManager
+import com.example.data.backup.RestoreResult
+import com.example.widget.TasbihAppWidgetProvider
 import com.example.notifications.DhikrReminderManager
 import com.example.notifications.ReminderSetting
 import com.example.ui.components.BeadMaterial
@@ -78,34 +88,12 @@ enum class SalahSetStage(
 
 class TasbihViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository: TasbihRepository
+    val preferences = TasbihPreferences(application.applicationContext)
     val audioHapticManager = AudioHapticManager(application.applicationContext)
     val reminderManager = DhikrReminderManager(application.applicationContext)
-    val preferences = TasbihPreferences(application.applicationContext)
 
-    // After Salah Tasbih (33 SubhanAllah -> 33 Alhamdulillah -> 33 Allahu Akbar -> 1 Seal = 100)
-    private val _isSalahSetMode = MutableStateFlow(preferences.isSalahSetMode)
-    val isSalahSetMode: StateFlow<Boolean> = _isSalahSetMode.asStateFlow()
-
-    private val _salahSetStage = MutableStateFlow(SalahSetStage.SUBHANALLAH)
-    val salahSetStage: StateFlow<SalahSetStage> = _salahSetStage.asStateFlow()
-
-    init {
-        val database = TasbihDatabase.getDatabase(application.applicationContext, viewModelScope)
-        repository = TasbihRepository(database.dhikrDao(), database.dhikrLogDao())
-        viewModelScope.launch {
-            repository.ensureDefaultAdhkarPopulated()
-            // Restore previously selected Dhikr
-            val savedId = preferences.selectedDhikrId
-            allDhikrs.collect { list ->
-                if (_selectedDhikr.value == null && list.isNotEmpty()) {
-                    val matching = list.find { it.id == savedId } ?: list.first()
-                    _selectedDhikr.value = matching
-                    _targetCount.value = if (preferences.savedTargetCount > 0) preferences.savedTargetCount else matching.defaultTarget
-                }
-            }
-        }
-    }
+    private val database = TasbihDatabase.getDatabase(application.applicationContext, viewModelScope)
+    private val repository = TasbihRepository(database.dhikrDao(), database.dhikrLogDao())
 
     val allDhikrs: StateFlow<List<DhikrItem>> = repository.allDhikrs
         .map { list -> list.distinctBy { it.transliteration.trim().lowercase() } }
@@ -125,6 +113,44 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
 
     val streakInfo: StateFlow<StreakInfo> = repository.calculateStreakFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StreakInfo())
+
+    // After Salah Tasbih (33 SubhanAllah -> 33 Alhamdulillah -> 33 Allahu Akbar -> 1 Seal = 100)
+    private val _isSalahSetMode = MutableStateFlow(preferences.isSalahSetMode)
+    val isSalahSetMode: StateFlow<Boolean> = _isSalahSetMode.asStateFlow()
+
+    private val _salahSetStage = MutableStateFlow(SalahSetStage.SUBHANALLAH)
+    val salahSetStage: StateFlow<SalahSetStage> = _salahSetStage.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            repository.ensureDefaultAdhkarPopulated()
+            // Restore previously selected Dhikr
+            val savedId = preferences.selectedDhikrId
+            allDhikrs.collect { list ->
+                if (_selectedDhikr.value == null && list.isNotEmpty()) {
+                    val matching = list.find { it.id == savedId } ?: list.first()
+                    _selectedDhikr.value = matching
+                    _targetCount.value = if (preferences.savedTargetCount > 0) preferences.savedTargetCount else matching.defaultTarget
+                }
+            }
+        }
+        viewModelScope.launch {
+            todayTotal.collect { count ->
+                preferences.widgetTodayCount = count
+                try {
+                    TasbihAppWidgetProvider.updateAllWidgets(application)
+                } catch (_: Exception) {}
+            }
+        }
+        viewModelScope.launch {
+            streakInfo.collect { streak ->
+                preferences.widgetStreakDays = streak.currentStreak
+                try {
+                    TasbihAppWidgetProvider.updateAllWidgets(application)
+                } catch (_: Exception) {}
+            }
+        }
+    }
 
     // Active Dhikr & Counter State
     private val _selectedDhikr = MutableStateFlow<DhikrItem?>(null)
@@ -185,6 +211,45 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     // Active Monthly Calendar Navigation
     private val _currentCalendarMonth = MutableStateFlow(Calendar.getInstance())
     val currentCalendarMonth: StateFlow<Calendar> = _currentCalendarMonth.asStateFlow()
+
+    // Offline Prayer Times & Qibla Compass
+    val compassSensorManager = CompassSensorManager(application.applicationContext)
+    val azimuthDegrees: StateFlow<Float> = compassSensorManager.azimuthDegrees
+
+    private val _selectedCity = MutableStateFlow(
+        CityLocations.findCity(preferences.selectedCityName)
+            ?: CityLocation(preferences.selectedCityName, preferences.selectedCityCountry, preferences.selectedLatitude, preferences.selectedLongitude)
+    )
+    val selectedCity: StateFlow<CityLocation> = _selectedCity.asStateFlow()
+
+    private val _calculationMethod = MutableStateFlow(
+        try {
+            CalculationMethod.valueOf(preferences.selectedCalculationMethod)
+        } catch (_: Exception) {
+            CalculationMethod.UMM_AL_QURA
+        }
+    )
+    val calculationMethod: StateFlow<CalculationMethod> = _calculationMethod.asStateFlow()
+
+    private val _juristicMethod = MutableStateFlow(
+        try {
+            JuristicMethod.valueOf(preferences.selectedAsrJuristic)
+        } catch (_: Exception) {
+            JuristicMethod.STANDARD
+        }
+    )
+    val juristicMethod: StateFlow<JuristicMethod> = _juristicMethod.asStateFlow()
+
+    private val _prayerTimesResult = MutableStateFlow(
+        PrayerCalculator.calculate(
+            calendar = Calendar.getInstance(),
+            latitude = preferences.selectedLatitude,
+            longitude = preferences.selectedLongitude,
+            method = try { CalculationMethod.valueOf(preferences.selectedCalculationMethod) } catch (_: Exception) { CalculationMethod.UMM_AL_QURA },
+            juristic = try { JuristicMethod.valueOf(preferences.selectedAsrJuristic) } catch (_: Exception) { JuristicMethod.STANDARD }
+        )
+    )
+    val prayerTimesResult: StateFlow<PrayerTimesResult> = _prayerTimesResult.asStateFlow()
 
     fun startSalahSetMode() {
         _isSalahSetMode.value = true
@@ -550,8 +615,71 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
         return list
     }
 
+    // Prayer Times & Qibla Actions
+    fun setCity(city: CityLocation) {
+        _selectedCity.value = city
+        preferences.selectedCityName = city.name
+        preferences.selectedCityCountry = city.country
+        preferences.selectedLatitude = city.latitude
+        preferences.selectedLongitude = city.longitude
+        refreshPrayerTimes()
+    }
+
+    fun setCalculationMethod(method: CalculationMethod) {
+        _calculationMethod.value = method
+        preferences.selectedCalculationMethod = method.name
+        refreshPrayerTimes()
+    }
+
+    fun setJuristicMethod(juristic: JuristicMethod) {
+        _juristicMethod.value = juristic
+        preferences.selectedAsrJuristic = juristic.name
+        refreshPrayerTimes()
+    }
+
+    fun refreshPrayerTimes() {
+        val result = PrayerCalculator.calculate(
+            calendar = Calendar.getInstance(),
+            latitude = _selectedCity.value.latitude,
+            longitude = _selectedCity.value.longitude,
+            method = _calculationMethod.value,
+            juristic = _juristicMethod.value
+        )
+        _prayerTimesResult.value = result
+        compassSensorManager.setQiblaBearing(result.qiblaBearing)
+    }
+
+    // Backup & Data Export / Restore
+    fun exportBackupJson(onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val dhikrs = repository.getAllDhikrsSnapshot().filter { it.isCustom }
+            val logs = repository.getAllLogsSnapshot()
+            val json = BackupManager.createBackupJson(dhikrs, logs)
+            onResult(json)
+        }
+    }
+
+    fun exportHistoryCsv(onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val logs = repository.getAllLogsSnapshot()
+            val csv = BackupManager.createHistoryCsv(logs)
+            onResult(csv)
+        }
+    }
+
+    fun restoreBackupJson(jsonString: String, onComplete: (RestoreResult) -> Unit) {
+        viewModelScope.launch {
+            val result = BackupManager.parseBackupJson(jsonString)
+            if (result.success) {
+                repository.restoreData(result.restoredDhikrs, result.restoredLogs)
+            }
+            onComplete(result)
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         audioHapticManager.destroy()
+        compassSensorManager.stopListening()
     }
 }

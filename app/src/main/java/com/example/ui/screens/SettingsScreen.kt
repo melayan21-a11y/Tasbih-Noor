@@ -27,17 +27,25 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.StayCurrentPortrait
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
+import android.widget.Toast
+import com.example.data.backup.BackupManager
 import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -111,6 +119,36 @@ fun SettingsScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasNotificationPermission = isGranted
+    }
+
+    var restoreDialogMessage by remember { mutableStateOf<String?>(null) }
+
+    val openJsonLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val content = BackupManager.readFromUri(context, uri)
+            if (content != null) {
+                viewModel.restoreBackupJson(content) { result ->
+                    restoreDialogMessage = result.message
+                }
+            } else {
+                restoreDialogMessage = "Could not read the selected backup file."
+            }
+        }
+    }
+
+    if (restoreDialogMessage != null) {
+        AlertDialog(
+            onDismissRequest = { restoreDialogMessage = null },
+            title = { Text("Backup Restore", fontWeight = FontWeight.Bold) },
+            text = { Text(restoreDialogMessage ?: "") },
+            confirmButton = {
+                Button(onClick = { restoreDialogMessage = null }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 
     Box(
@@ -823,6 +861,130 @@ fun SettingsScreen(
                         ),
                         modifier = Modifier.testTag("keep_awake_switch")
                     )
+                }
+            }
+        }
+
+        // Data Backup & Export Section
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("backup_export_card"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isNightMode) Color(0xFF09241C) else Color.White
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (isNightMode) Color(0xFF1E483C) else Color(0xFFE0E0E0)
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Storage,
+                            contentDescription = "Data Backup",
+                            tint = GoldPrimary
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Data Backup & Export",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isNightMode) GoldLight else EmeraldDeep
+                            )
+                            Text(
+                                text = "Safeguard your custom dhikrs and prayer logs locally, or export to spreadsheet",
+                                fontSize = 12.sp,
+                                color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.Gray
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Button 1: Export Full Backup (JSON)
+                    Button(
+                        onClick = {
+                            viewModel.exportBackupJson { json ->
+                                val dateStr = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                                BackupManager.shareContentAsFile(
+                                    context = context,
+                                    content = json,
+                                    fileName = "tasbih_noor_backup_$dateStr.json",
+                                    mimeType = "application/json"
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isNightMode) Color(0xFF133F34) else Color(0xFFE8F5E9),
+                            contentColor = if (isNightMode) GoldLight else EmeraldDeep
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("export_backup_json_btn")
+                    ) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Export Backup (JSON)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Button 2: Export History (CSV)
+                    Button(
+                        onClick = {
+                            viewModel.exportHistoryCsv { csv ->
+                                val dateStr = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                                BackupManager.shareContentAsFile(
+                                    context = context,
+                                    content = csv,
+                                    fileName = "tasbih_history_$dateStr.csv",
+                                    mimeType = "text/csv"
+                                )
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isNightMode) Color(0xFF10332B) else Color(0xFFF1F8F4),
+                            contentColor = if (isNightMode) GoldLight else EmeraldPrimary
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("export_history_csv_btn")
+                    ) {
+                        Icon(imageVector = Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Export History (CSV)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Button 3: Restore from JSON Backup
+                    OutlinedButton(
+                        onClick = {
+                            openJsonLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("restore_backup_json_btn")
+                    ) {
+                        Icon(imageVector = Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Restore from Backup File (.json)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }

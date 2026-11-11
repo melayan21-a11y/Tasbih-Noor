@@ -55,6 +55,23 @@ class TasbihRepository(
         dhikrDao.updateDhikr(item)
     }
 
+    suspend fun getAllLogsSnapshot(): List<DhikrLog> {
+        return dhikrLogDao.getAllLogs().first()
+    }
+
+    suspend fun getAllDhikrsSnapshot(): List<DhikrItem> {
+        return dhikrDao.getAllDhikrItems().first()
+    }
+
+    suspend fun restoreData(items: List<DhikrItem>, logs: List<DhikrLog>) {
+        for (item in items) {
+            dhikrDao.insertDhikr(item)
+        }
+        for (log in logs) {
+            dhikrLogDao.insertLog(log)
+        }
+    }
+
     suspend fun ensureDefaultAdhkarPopulated() {
         dhikrDao.removeDuplicates()
         if (dhikrDao.countDhikrItems() == 0) {

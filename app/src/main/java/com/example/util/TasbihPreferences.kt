@@ -86,6 +86,44 @@ class TasbihPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_IS_SALAH_SET_MODE, false)
         set(value) = prefs.edit().putBoolean(KEY_IS_SALAH_SET_MODE, value).apply()
 
+    // Prayer Times & Qibla Settings
+    var selectedCityName: String
+        get() = prefs.getString(KEY_CITY_NAME, "Makkah") ?: "Makkah"
+        set(value) = prefs.edit().putString(KEY_CITY_NAME, value).apply()
+
+    var selectedCityCountry: String
+        get() = prefs.getString(KEY_CITY_COUNTRY, "Saudi Arabia") ?: "Saudi Arabia"
+        set(value) = prefs.edit().putString(KEY_CITY_COUNTRY, value).apply()
+
+    var selectedLatitude: Double
+        get() = prefs.getFloat(KEY_LATITUDE, 21.4225f).toDouble()
+        set(value) = prefs.edit().putFloat(KEY_LATITUDE, value.toFloat()).apply()
+
+    var selectedLongitude: Double
+        get() = prefs.getFloat(KEY_LONGITUDE, 39.8262f).toDouble()
+        set(value) = prefs.edit().putFloat(KEY_LONGITUDE, value.toFloat()).apply()
+
+    var selectedCalculationMethod: String
+        get() = prefs.getString(KEY_CALC_METHOD, "UMM_AL_QURA") ?: "UMM_AL_QURA"
+        set(value) = prefs.edit().putString(KEY_CALC_METHOD, value).apply()
+
+    var selectedAsrJuristic: String
+        get() = prefs.getString(KEY_ASR_JURISTIC, "STANDARD") ?: "STANDARD"
+        set(value) = prefs.edit().putString(KEY_ASR_JURISTIC, value).apply()
+
+    // Quick Widget Cached Count
+    var widgetTodayCount: Int
+        get() = prefs.getInt(KEY_WIDGET_TODAY_COUNT, 0)
+        set(value) = prefs.edit().putInt(KEY_WIDGET_TODAY_COUNT, value).apply()
+
+    var widgetStreakDays: Int
+        get() = prefs.getInt(KEY_WIDGET_STREAK_DAYS, 0)
+        set(value) = prefs.edit().putInt(KEY_WIDGET_STREAK_DAYS, value).apply()
+
+    var widgetReminderIndex: Int
+        get() = prefs.getInt(KEY_WIDGET_REMINDER_INDEX, 0)
+        set(value) = prefs.edit().putInt(KEY_WIDGET_REMINDER_INDEX, value).apply()
+
     companion object {
         private const val PREFS_NAME = "tasbih_user_preferences"
         private const val KEY_SOUND_TYPE = "pref_sound_type"
@@ -98,5 +136,15 @@ class TasbihPreferences(context: Context) {
         private const val KEY_SELECTED_DHIKR_ID = "pref_selected_dhikr_id"
         private const val KEY_TARGET_COUNT = "pref_target_count"
         private const val KEY_IS_SALAH_SET_MODE = "pref_is_salah_set_mode"
+        private const val KEY_CITY_NAME = "pref_city_name"
+        private const val KEY_CITY_COUNTRY = "pref_city_country"
+        private const val KEY_LATITUDE = "pref_latitude"
+        private const val KEY_LONGITUDE = "pref_longitude"
+        private const val KEY_CALC_METHOD = "pref_calc_method"
+        private const val KEY_ASR_JURISTIC = "pref_asr_juristic"
+        private const val KEY_WIDGET_TODAY_COUNT = "pref_widget_today_count"
+        private const val KEY_WIDGET_STREAK_DAYS = "pref_widget_streak_days"
+        private const val KEY_WIDGET_REMINDER_INDEX = "pref_widget_reminder_index"
     }
 }
+

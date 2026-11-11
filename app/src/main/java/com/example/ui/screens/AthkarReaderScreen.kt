@@ -68,6 +68,7 @@ import com.example.data.model.AthkarItem
 import com.example.data.model.AthkarRepository
 import com.example.data.model.AthkarType
 import com.example.data.model.DhikrItem
+import com.example.ui.theme.DayEmeraldDeep
 import com.example.ui.theme.EmeraldDeep
 import com.example.ui.theme.EmeraldPrimary
 import com.example.ui.theme.GoldLight
@@ -109,17 +110,16 @@ fun AthkarReaderScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(if (isNightMode) Color(0xFF071914) else Color(0xFFF7FAF8))
+            .background(if (isNightMode) Color(0xFF071914) else Color(0xFFFAF7F0))
     ) {
-        if (isNightMode) {
-            Image(
-                painter = painterResource(id = R.drawable.bg_islamic_night),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                alpha = 0.22f
-            )
-        }
+        // Ambient background artwork for both Night Noor and Day Noor
+        Image(
+            painter = painterResource(id = if (isNightMode) R.drawable.bg_islamic_night else R.drawable.bg_islamic_day),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            alpha = if (isNightMode) 0.22f else 0.16f
+        )
 
         Column(
             modifier = Modifier
@@ -349,11 +349,11 @@ fun AthkarReaderScreen(
                         .fillMaxWidth(),
                     shape = RoundedCornerShape(22.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isNightMode) Color(0xFF0A261E).copy(alpha = 0.94f) else Color.White
+                        containerColor = if (isNightMode) Color(0xFF0A261E).copy(alpha = 0.94f) else Color(0xFFFFFDF8).copy(alpha = 0.96f)
                     ),
                     border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        if (isNightMode) GoldPrimary.copy(alpha = 0.35f) else Color(0xFFD4E3DB)
+                        1.2.dp,
+                        if (isNightMode) GoldPrimary.copy(alpha = 0.35f) else Color(0xFFDFCC9D)
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                 ) {
@@ -372,7 +372,7 @@ fun AthkarReaderScreen(
                                 text = currentItem.arabicText,
                                 fontSize = 21.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isNightMode) GoldLight else EmeraldDeep,
+                                color = if (isNightMode) GoldLight else DayEmeraldDeep,
                                 textAlign = TextAlign.Right,
                                 lineHeight = 36.sp,
                                 modifier = Modifier
@@ -387,7 +387,7 @@ fun AthkarReaderScreen(
                                 text = currentItem.transliteration,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isNightMode) Color(0xFFFFD54F) else Color(0xFF2E7D32),
+                                color = if (isNightMode) Color(0xFFFFD54F) else Color(0xFF8C6418),
                                 lineHeight = 19.sp
                             )
 
@@ -397,7 +397,7 @@ fun AthkarReaderScreen(
                             Text(
                                 text = currentItem.englishTranslation,
                                 fontSize = 12.sp,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.85f) else Color(0xFF37474F),
+                                color = if (isNightMode) Color.White.copy(alpha = 0.85f) else Color(0xFF4C6B61),
                                 lineHeight = 18.sp
                             )
 
@@ -463,11 +463,11 @@ fun AthkarReaderScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         // Tap Counter Button for Current Supplication
                         Surface(
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(16.dp),
                             color = if (isItemDone) {
                                 if (isNightMode) Color(0xFF133F34) else Color(0xFFE8F5E9)
                             } else {
@@ -500,7 +500,7 @@ fun AthkarReaderScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 12.dp, horizontal = 16.dp),
+                                    .padding(vertical = 8.dp, horizontal = 14.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
