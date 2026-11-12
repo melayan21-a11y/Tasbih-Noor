@@ -14,6 +14,9 @@ interface DhikrDao {
     @Query("SELECT * FROM dhikr_items GROUP BY transliteration ORDER BY isCustom ASC, orderIndex ASC, id ASC")
     fun getAllDhikrItems(): Flow<List<DhikrItem>>
 
+    @Query("SELECT * FROM dhikr_items")
+    suspend fun getAllDhikrList(): List<DhikrItem>
+
     @Query("SELECT * FROM dhikr_items WHERE id = :id LIMIT 1")
     suspend fun getDhikrById(id: Long): DhikrItem?
 

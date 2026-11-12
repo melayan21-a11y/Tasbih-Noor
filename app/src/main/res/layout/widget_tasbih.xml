@@ -21,7 +21,7 @@
             android:layout_weight="1"
             android:text="🕌 Tasbih Noor"
             android:textColor="#F6DE8F"
-            android:textSize="13sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
         <TextView
@@ -35,7 +35,7 @@
             android:paddingBottom="4dp"
             android:text="↻ Next Dua"
             android:textColor="#FFF2C2"
-            android:textSize="11sp"
+            android:textSize="12sp"
             android:textStyle="bold" />
 
         <TextView
@@ -50,7 +50,7 @@
             android:paddingBottom="4dp"
             android:text="🔥 1d"
             android:textColor="#FFF2C2"
-            android:textSize="11sp"
+            android:textSize="12sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -76,7 +76,7 @@
             android:layout_height="wrap_content"
             android:text="✨ Daily Athkar"
             android:textColor="#F4CE62"
-            android:textSize="11sp"
+            android:textSize="12sp"
             android:textStyle="bold" />
 
         <!-- High-Legibility Arabic Script -->
@@ -88,9 +88,9 @@
             android:gravity="right"
             android:text="سُبْحَانَ اللَّهِ وَبِحَمْدِهِ"
             android:textColor="#FFFFFF"
-            android:textSize="20sp"
+            android:textSize="23sp"
             android:textStyle="bold"
-            android:lineSpacingExtra="4dp"
+            android:lineSpacingExtra="5dp"
             android:maxLines="3" />
 
         <!-- Clear, Prominent Translation & Meaning -->
@@ -101,8 +101,8 @@
             android:layout_marginTop="6dp"
             android:text="SubhanAllahi wa bihamdihi • Glory be to Allah and His praise"
             android:textColor="#D6EFE0"
-            android:textSize="13sp"
-            android:lineSpacingExtra="2dp"
+            android:textSize="15sp"
+            android:lineSpacingExtra="3dp"
             android:maxLines="3" />
     </LinearLayout>
 
@@ -120,7 +120,7 @@
             android:layout_weight="1"
             android:text="Tap card or ↻ for next reminder"
             android:textColor="#A3C6B9"
-            android:textSize="10sp" />
+            android:textSize="11sp" />
 
         <TextView
             android:id="@+id/widget_btn_open"
@@ -129,11 +129,11 @@
             android:background="@drawable/bg_widget_pill"
             android:paddingLeft="10dp"
             android:paddingRight="10dp"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
             android:text="Open Noor ➔"
             android:textColor="#F3E5AB"
-            android:textSize="10sp"
+            android:textSize="11sp"
             android:textStyle="bold" />
     </LinearLayout>
 

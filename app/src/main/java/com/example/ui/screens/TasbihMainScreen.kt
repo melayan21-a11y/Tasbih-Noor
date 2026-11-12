@@ -18,11 +18,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Pause
@@ -30,6 +33,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -44,7 +48,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -331,18 +337,37 @@ fun TasbihMainScreen(
                 }
             }
 
-            // Dhikr Banner Card (Tappable to change Dhikr or Shows Current Set Step)
+            // Dhikr Banner Card (Swipe left/right or tap chevrons to change Dhikr)
+            var dhikrSwipeAccumulator by remember { mutableFloatStateOf(0f) }
             Card(
                 onClick = {
-                    if (isSalahSetMode) {
-                        // In set mode, allow user to view library or stay
-                        onNavigateToLibrary()
-                    } else {
+                    if (!isSalahSetMode) {
                         onNavigateToLibrary()
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .pointerInput(isSalahSetMode) {
+                        detectHorizontalDragGestures(
+                            onDragStart = { dhikrSwipeAccumulator = 0f },
+                            onDragEnd = {
+                                if (dhikrSwipeAccumulator < -40f) {
+                                    // Swipe left -> Next Dhikr
+                                    viewModel.selectNextDhikr()
+                                } else if (dhikrSwipeAccumulator > 40f) {
+                                    // Swipe right -> Previous Dhikr
+                                    viewModel.selectPreviousDhikr()
+                                }
+                                dhikrSwipeAccumulator = 0f
+                            },
+                            onHorizontalDrag = { change, dragAmount ->
+                                if (kotlin.math.abs(dragAmount) > 2f) {
+                                    change.consume()
+                                    dhikrSwipeAccumulator += dragAmount
+                                }
+                            }
+                        )
+                    }
                     .testTag("current_dhikr_card"),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
@@ -357,7 +382,7 @@ fun TasbihMainScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Category & mode affordance
@@ -399,48 +424,93 @@ fun TasbihMainScreen(
                             }
                         } else {
                             Text(
-                                text = "Change Dhikr ▾",
-                                fontSize = 12.sp,
+                                text = "Swipe ◂ ▸ or tap arrows",
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = if (isNightMode) GoldPrimary else DayGoldAccent
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // Arabic Calligraphy Text
-                    Text(
-                        text = if (isSalahSetMode) salahSetStage.arabicText else (currentDhikr?.arabicText ?: "سُبْحَانَ اللَّهِ"),
-                        fontSize = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 20.sp else 26.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isNightMode) GoldLight else DayEmeraldDeep,
-                        textAlign = TextAlign.Center,
-                        lineHeight = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 30.sp else 36.sp
-                    )
-
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Transliteration
-                    Text(
-                        text = if (isSalahSetMode) salahSetStage.transliteration else (currentDhikr?.transliteration ?: "SubhanAllah"),
-                        fontSize = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 13.sp else 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isNightMode) Color.White.copy(alpha = 0.9f) else Color(0xFF8C6418),
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    // Main Dhikr Row flanked with subtle left and right arrows
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (!isSalahSetMode) {
+                            IconButton(
+                                onClick = { viewModel.selectPreviousDhikr() },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .testTag("dhikr_prev_arrow")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronLeft,
+                                    contentDescription = "Previous Dhikr",
+                                    tint = if (isNightMode) GoldPrimary.copy(alpha = 0.85f) else DayGoldAccent,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
 
-                    // English Translation
-                    Text(
-                        text = if (isSalahSetMode) salahSetStage.translation else (currentDhikr?.englishTranslation ?: "Glory be to Allah"),
-                        fontSize = 12.sp,
-                        color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color(0xFF4C6B61),
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Arabic Calligraphy Text
+                            Text(
+                                text = if (isSalahSetMode) salahSetStage.arabicText else (currentDhikr?.arabicText ?: "سُبْحَانَ اللَّهِ"),
+                                fontSize = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 20.sp else 26.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isNightMode) GoldLight else DayEmeraldDeep,
+                                textAlign = TextAlign.Center,
+                                lineHeight = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 30.sp else 36.sp
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            // Transliteration
+                            Text(
+                                text = if (isSalahSetMode) salahSetStage.transliteration else (currentDhikr?.transliteration ?: "SubhanAllah"),
+                                fontSize = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 13.sp else 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isNightMode) Color.White.copy(alpha = 0.9f) else Color(0xFF8C6418),
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            // English Translation
+                            Text(
+                                text = if (isSalahSetMode) salahSetStage.translation else (currentDhikr?.englishTranslation ?: "Glory be to Allah"),
+                                fontSize = 12.sp,
+                                color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color(0xFF4C6B61),
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        if (!isSalahSetMode) {
+                            IconButton(
+                                onClick = { viewModel.selectNextDhikr() },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .testTag("dhikr_next_arrow")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = "Next Dhikr",
+                                    tint = if (isNightMode) GoldPrimary.copy(alpha = 0.85f) else DayGoldAccent,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 

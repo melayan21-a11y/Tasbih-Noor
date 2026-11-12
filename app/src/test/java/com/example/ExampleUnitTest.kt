@@ -44,10 +44,25 @@ class ExampleUnitTest {
         val morning = com.example.data.model.AthkarRepository.morningAthkar
         val evening = com.example.data.model.AthkarRepository.eveningAthkar
 
-        assertEquals(22, morning.size)
-        assertEquals(22, evening.size)
+        assertEquals(23, morning.size)
+        assertEquals(24, evening.size)
         assertTrue(morning.all { it.arabicText.isNotBlank() && it.targetCount > 0 })
         assertTrue(evening.all { it.arabicText.isNotBlank() && it.targetCount > 0 })
+
+        // Verify Bismillah is at the top of 3 Quls (Ikhlas, Falaq, Nas)
+        assertTrue(morning[1].arabicText.startsWith("بِسْمِ اللَّهِ الرَّحْمٰنِ الرَّحِيمِ"))
+        assertTrue(morning[2].arabicText.startsWith("بِسْمِ اللَّهِ الرَّحْمٰنِ الرَّحِيمِ"))
+        assertTrue(morning[3].arabicText.startsWith("بِسْمِ اللَّهِ الرَّحْمٰنِ الرَّحِيمِ"))
+
+        // Verify Evening has last 2 verses of Al-Baqarah (Amanar-Rasul) after Ayat al-Kursi
+        assertTrue(evening[1].arabicText.contains("آمَنَ الرَّسُولُ"))
+        assertEquals(1, evening[1].targetCount)
+
+        // Verify both end with Salawat x10
+        assertEquals(10, morning.last().targetCount)
+        assertTrue(morning.last().arabicText.contains("اللَّهُمَّ صَلِّ"))
+        assertEquals(10, evening.last().targetCount)
+        assertTrue(evening.last().arabicText.contains("اللَّهُمَّ صَلِّ"))
     }
 
     @Test

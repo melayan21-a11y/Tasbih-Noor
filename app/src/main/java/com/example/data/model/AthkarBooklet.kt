@@ -32,9 +32,9 @@ object AthkarRepository {
         // 2. Surah Al-Ikhlas
         AthkarItem(
             id = 102,
-            arabicText = "قُلْ هُوَ اللَّهُ أَحَدٌ ۝ اللَّهُ الصَّمَدُ ۝ لَمْ يَلِدْ وَلَمْ يُولَدْ ۝ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ",
-            transliteration = "Qul Huwallahu Ahad, Allahus-Samad, Lam yalid wa lam yoolad, Wa lam yakul-lahu kufuwan ahad.",
-            englishTranslation = "Say: He is Allah, [who is] One, Allah, the Eternal Refuge. He neither begets nor is born, nor is there to Him any equivalent.",
+            arabicText = "بِسْمِ اللَّهِ الرَّحْمٰنِ الرَّحِيمِ\nقُلْ هُوَ اللَّهُ أَحَدٌ ۝ اللَّهُ الصَّمَدُ ۝ لَمْ يَلِدْ وَلَمْ يُولَدْ ۝ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ",
+            transliteration = "Bismillahir-Rahmanir-Raheem.\nQul Huwallahu Ahad, Allahus-Samad, Lam yalid wa lam yoolad, Wa lam yakul-lahu kufuwan ahad.",
+            englishTranslation = "In the Name of Allah, the Entirely Merciful, the Especially Merciful.\nSay: He is Allah, [who is] One, Allah, the Eternal Refuge. He neither begets nor is born, nor is there to Him any equivalent.",
             targetCount = 3,
             virtue = "Reciting Surah Al-Ikhlas and the Mu'awwidhat (Falaq & Nas) three times in the morning and evening will suffice you against everything.",
             reference = "Surah Al-Ikhlas (112) • Sunan Abi Dawud (5082) • Jami` at-Tirmidhi (3575)"
@@ -43,9 +43,9 @@ object AthkarRepository {
         // 3. Surah Al-Falaq
         AthkarItem(
             id = 103,
-            arabicText = "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ۝ مِن شَرِّ مَا خَلَقَ ۝ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ۝ وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ ۝ وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ",
-            transliteration = "Qul a'oodhu bi Rabbil-falaq, Min sharri ma khalaq, Wa min sharri ghasiqin idha waqab, Wa min sharrin-naffathati fil-'uqad, Wa min sharri hasidin idha hasad.",
-            englishTranslation = "Say: I seek refuge in the Lord of daybreak, from the evil of that which He created, and from the evil of darkness when it settles, and from the evil of the blowers in knots, and from the evil of an envier when he envies.",
+            arabicText = "بِسْمِ اللَّهِ الرَّحْمٰنِ الرَّحِيمِ\nقُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ۝ مِن شَرِّ مَا خَلَقَ ۝ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ۝ وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ ۝ وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ",
+            transliteration = "Bismillahir-Rahmanir-Raheem.\nQul a'oodhu bi Rabbil-falaq, Min sharri ma khalaq, Wa min sharri ghasiqin idha waqab, Wa min sharrin-naffathati fil-'uqad, Wa min sharri hasidin idha hasad.",
+            englishTranslation = "In the Name of Allah, the Entirely Merciful, the Especially Merciful.\nSay: I seek refuge in the Lord of daybreak, from the evil of that which He created, and from the evil of darkness when it settles, and from the evil of the blowers in knots, and from the evil of an envier when he envies.",
             targetCount = 3,
             virtue = "Shield against jealousy, dark malice, and unseen harms.",
             reference = "Surah Al-Falaq (113) • Sunan Abi Dawud (5082) • Jami` at-Tirmidhi (3575)"
@@ -54,9 +54,9 @@ object AthkarRepository {
         // 4. Surah An-Nas
         AthkarItem(
             id = 104,
-            arabicText = "قُلْ أَعُوذُ بِرَبِّ النَّاسِ ۝ مَلِكِ النَّاسِ ۝ إِلَٰهِ النَّاسِ ۝ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ۝ الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ ۝ مِنَ الْجِنَّةِ وَالنَّاسِ",
-            transliteration = "Qul a'oodhu bi Rabbin-nas, Malikin-nas, Ilahin-nas, Min sharril-waswasil-khannas, Alladhee yuwaswisu fee sudoorin-nas, Minal-jinnati wan-nas.",
-            englishTranslation = "Say: I seek refuge in the Lord of mankind, the Sovereign of mankind, the God of mankind, from the evil of the retreating whisperer who whispers into the breasts of mankind, from among the jinn and mankind.",
+            arabicText = "بِسْمِ اللَّهِ الرَّحْمٰنِ الرَّحِيمِ\nقُلْ أَعُوذُ بِرَبِّ النَّاسِ ۝ مَلِكِ النَّاسِ ۝ إِلَٰهِ النَّاسِ ۝ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ۝ الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ ۝ مِنَ الْجِنَّةِ وَالنَّاسِ",
+            transliteration = "Bismillahir-Rahmanir-Raheem.\nQul a'oodhu bi Rabbin-nas, Malikin-nas, Ilahin-nas, Min sharril-waswasil-khannas, Alladhee yuwaswisu fee sudoorin-nas, Minal-jinnati wan-nas.",
+            englishTranslation = "In the Name of Allah, the Entirely Merciful, the Especially Merciful.\nSay: I seek refuge in the Lord of mankind, the Sovereign of mankind, the God of mankind, from the evil of the retreating whisperer who whispers into the breasts of mankind, from among the jinn and mankind.",
             targetCount = 3,
             virtue = "Sanctuary against doubts, anxiety, and demonic whisperings.",
             reference = "Surah An-Nas (114) • Sunan an-Nasa'i (5428)"
@@ -258,6 +258,17 @@ object AthkarRepository {
             targetCount = 100,
             virtue = "The Prophet ﷺ said: 'By Allah, I seek Allah's forgiveness and repent to Him more than seventy (and in narration, 100) times a day.'",
             reference = "Sahih al-Bukhari (6307) • Sahih Muslim (2702)"
+        ),
+
+        // 23. Salawat upon the Prophet ﷺ (10x)
+        AthkarItem(
+            id = 123,
+            arabicText = "اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَىٰ سَيِّدِنَا مُحَمَّدٍ",
+            transliteration = "Allahumma salli wa sallim 'ala sayyidina Muhammad.",
+            englishTranslation = "O Allah, send blessings and peace upon our master Muhammad.",
+            targetCount = 10,
+            virtue = "The Prophet ﷺ said: 'Whoever sends blessings upon me ten times in the morning and ten times in the evening will attain my intercession on the Day of Resurrection.'",
+            reference = "Al-Mu'jam al-Kabir li't-Tabarani • Sahih at-Targhib wa't-Tarhib (656)"
         )
     )
 
@@ -273,34 +284,45 @@ object AthkarRepository {
             reference = "Ayatul Kursi (Surah Al-Baqarah 2:255) • Al-Hakim (1/562)"
         ),
 
-        // 2. Surah Al-Ikhlas
+        // 2. The Last Two Verses of Surah Al-Baqarah (2:285-286)
         AthkarItem(
             id = 202,
-            arabicText = "قُلْ هُوَ اللَّهُ أَحَدٌ ۝ اللَّهُ الصَّمَدُ ۝ لَمْ يَلِدْ وَلَمْ يُولَدْ ۝ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ",
-            transliteration = "Qul Huwallahu Ahad, Allahus-Samad, Lam yalid wa lam yoolad, Wa lam yakul-lahu kufuwan ahad.",
-            englishTranslation = "Say: He is Allah, [who is] One, Allah, the Eternal Refuge. He neither begets nor is born, nor is there to Him any equivalent.",
+            arabicText = "آمَنَ الرَّسُولُ بِمَا أُنزِلَ إِلَيْهِ مِن رَّبِّهِ وَالْمُؤْمِنُونَ ۚ كُلٌّ آمَنَ بِاللَّهِ وَمَلَائِكَتِهِ وَكُتُبِهِ وَرُسُلِهِ لَا نُفَرِّقُ بَيْنَ أَحَدٍ مِّن رُّسُلِهِ ۚ وَقَالُوا سَمِعْنَا وَأَطَعْنَا ۖ غُفْرَانَكَ رَبَّنَا وَإِلَيْكَ الْمَصِيرُ ۝ لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا ۚ لَهَا مَا كَسَبَتْ وَعَلَيْهَا مَا اكْتَسَبَتْ ۗ رَبَّنَا لَا تُؤَاخِذْنَا إِن نَّسِينَا أَوْ أَخْطَأْنَا ۚ رَبَّنَا وَلَا تَحْمِلْ عَلَيْنَا إِصْرًا كَمَا حَمَلْتَهُ عَلَى الَّذِينَ مِن قَبْلِنَا ۚ رَبَّنَا وَلَا تُحَمِّلْنَا مَا لَا طَاقَةَ لَنَا بِهِ ۖ وَاعْفُ عَنَّا وَاغْفِرْ لَنَا وَارْحَمْنَا ۚ أَنتَ مَوْلَانَا فَانصُرْنَا عَلَى الْقَوْمِ الْكَافِرِينَ",
+            transliteration = "Aamanar-Rasoolu bimaa unzila ilayhi mir-Rabbihee wal-mu'minoon. Kullun aamana billaahi wa malaaa'ikatihee wa kutubihee wa rusulih, laa nufarriqu bayna ahadim-mir-rusulih. Wa qaaloo sami'naa wa ata'naa, ghufraanaka Rabbanaa wa ilaykal-maseer. Laa yukallifullaahu nafsan illaa wus'ahaa, lahaa maa kasabat wa 'alayhaa maktasabat. Rabbanaa laa tu'aakhidhnaaa in naseenaaa aw akhta'naa, Rabbanaa wa laa tahmil 'alaynaaa isran kamaa hamaltahoo 'alal-ladheena min qablinaa, Rabbanaa wa laa tuhammilnaa maa laa taaqata lanaa bih, wa'fu 'annaa waghfir lanaa warhamnaaa, Anta Mawlaanaa fansurnaa 'alal-qawmil-kaafireen.",
+            englishTranslation = "The Messenger has believed in what was revealed to him from his Lord, and [so have] the believers. All of them have believed in Allah and His angels and His books and His messengers, [saying], 'We make no distinction between any of His messengers.' And they say, 'We hear and we obey. [We seek] Your forgiveness, our Lord, and to You is the [final] destination.' Allah does not charge a soul except [with that within] its capacity. It will have [the consequence of] what [good] it has gained, and it will bear [the consequence of] what [evil] it has earned. 'Our Lord, do not impose blame upon us if we have forgotten or erred. Our Lord, and lay not upon us a burden like that which You laid upon those before us. Our Lord, and burden us not with that which we have no ability to bear. And pardon us; and forgive us; and have mercy upon us. You are our protector, so give us victory over the disbelieving people.'",
+            targetCount = 1,
+            virtue = "The Prophet ﷺ said: 'Whoever recites the last two verses of Surah Al-Baqarah at night, they will suffice him (for protection, peace, and security).' (Sahih al-Bukhari 5009, Sahih Muslim 808).",
+            reference = "Surah Al-Baqarah (2:285-286) • Sahih al-Bukhari (5009) • Sahih Muslim (808)"
+        ),
+
+        // 3. Surah Al-Ikhlas
+        AthkarItem(
+            id = 203,
+            arabicText = "بِسْمِ اللَّهِ الرَّحْمٰنِ الرَّحِيمِ\nقُلْ هُوَ اللَّهُ أَحَدٌ ۝ اللَّهُ الصَّمَدُ ۝ لَمْ يَلِدْ وَلَمْ يُولَدْ ۝ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ",
+            transliteration = "Bismillahir-Rahmanir-Raheem.\nQul Huwallahu Ahad, Allahus-Samad, Lam yalid wa lam yoolad, Wa lam yakul-lahu kufuwan ahad.",
+            englishTranslation = "In the Name of Allah, the Entirely Merciful, the Especially Merciful.\nSay: He is Allah, [who is] One, Allah, the Eternal Refuge. He neither begets nor is born, nor is there to Him any equivalent.",
             targetCount = 3,
             virtue = "Recited 3 times in the evening along with Falaq and Nas to suffice against any distress through the night.",
             reference = "Surah Al-Ikhlas (112) • Sunan Abi Dawud (5082) • Jami` at-Tirmidhi (3575)"
         ),
 
-        // 3. Surah Al-Falaq
+        // 4. Surah Al-Falaq
         AthkarItem(
-            id = 203,
-            arabicText = "قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ۝ مِن شَرِّ مَا خَلَقَ ۝ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ۝ وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ ۝ وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ",
-            transliteration = "Qul a'oodhu bi Rabbil-falaq, Min sharri ma khalaq, Wa min sharri ghasiqin idha waqab, Wa min sharrin-naffathati fil-'uqad, Wa min sharri hasidin idha hasad.",
-            englishTranslation = "Say: I seek refuge in the Lord of daybreak, from the evil of that which He created, and from the evil of darkness when it settles, and from the evil of the blowers in knots, and from the evil of an envier when he envies.",
+            id = 204,
+            arabicText = "بِسْمِ اللَّهِ الرَّحْمٰنِ الرَّحِيمِ\nقُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ۝ مِن شَرِّ مَا خَلَقَ ۝ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ۝ وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ ۝ وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ",
+            transliteration = "Bismillahir-Rahmanir-Raheem.\nQul a'oodhu bi Rabbil-falaq, Min sharri ma khalaq, Wa min sharri ghasiqin idha waqab, Wa min sharrin-naffathati fil-'uqad, Wa min sharri hasidin idha hasad.",
+            englishTranslation = "In the Name of Allah, the Entirely Merciful, the Especially Merciful.\nSay: I seek refuge in the Lord of daybreak, from the evil of that which He created, and from the evil of darkness when it settles, and from the evil of the blowers in knots, and from the evil of an envier when he envies.",
             targetCount = 3,
             virtue = "Protection during the night against unseen evil, envy, and black magic.",
             reference = "Surah Al-Falaq (113) • Sunan Abi Dawud (5082) • Jami` at-Tirmidhi (3575)"
         ),
 
-        // 4. Surah An-Nas
+        // 5. Surah An-Nas
         AthkarItem(
-            id = 204,
-            arabicText = "قُلْ أَعُوذُ بِرَبِّ النَّاسِ ۝ مَلِكِ النَّاسِ ۝ إِلَٰهِ النَّاسِ ۝ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ۝ الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ ۝ مِنَ الْجِنَّةِ وَالنَّاسِ",
-            transliteration = "Qul a'oodhu bi Rabbin-nas, Malikin-nas, Ilahin-nas, Min sharril-waswasil-khannas, Alladhee yuwaswisu fee sudoorin-nas, Minal-jinnati wan-nas.",
-            englishTranslation = "Say: I seek refuge in the Lord of mankind, the Sovereign of mankind, the God of mankind, from the evil of the retreating whisperer who whispers into the breasts of mankind, from among the jinn and mankind.",
+            id = 205,
+            arabicText = "بِسْمِ اللَّهِ الرَّحْمٰنِ الرَّحِيمِ\nقُلْ أَعُوذُ بِرَبِّ النَّاسِ ۝ مَلِكِ النَّاسِ ۝ إِلَٰهِ النَّاسِ ۝ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ۝ الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ ۝ مِنَ الْجِنَّةِ وَالنَّاسِ",
+            transliteration = "Bismillahir-Rahmanir-Raheem.\nQul a'oodhu bi Rabbin-nas, Malikin-nas, Ilahin-nas, Min sharril-waswasil-khannas, Alladhee yuwaswisu fee sudoorin-nas, Minal-jinnati wan-nas.",
+            englishTranslation = "In the Name of Allah, the Entirely Merciful, the Especially Merciful.\nSay: I seek refuge in the Lord of mankind, the Sovereign of mankind, the God of mankind, from the evil of the retreating whisperer who whispers into the breasts of mankind, from among the jinn and mankind.",
             targetCount = 3,
             virtue = "Shield against bedtime anxiety, bad dreams, and whispers of the self and devils.",
             reference = "Surah An-Nas (114) • Sunan an-Nasa'i (5428)"
@@ -502,6 +524,17 @@ object AthkarRepository {
             targetCount = 100,
             virtue = "Prophetic istighfar repeated 100 times to purify the soul and seek sincere repentance before the night.",
             reference = "Sahih al-Bukhari (6307) • Sahih Muslim (2702)"
+        ),
+
+        // 24. Salawat upon the Prophet ﷺ (10x)
+        AthkarItem(
+            id = 224,
+            arabicText = "اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَىٰ سَيِّدِنَا مُحَمَّدٍ",
+            transliteration = "Allahumma salli wa sallim 'ala sayyidina Muhammad.",
+            englishTranslation = "O Allah, send blessings and peace upon our master Muhammad.",
+            targetCount = 10,
+            virtue = "The Prophet ﷺ said: 'Whoever sends blessings upon me ten times in the morning and ten times in the evening will attain my intercession on the Day of Resurrection.'",
+            reference = "Al-Mu'jam al-Kabir li't-Tabarani • Sahih at-Targhib wa't-Tarhib (656)"
         )
     )
 }

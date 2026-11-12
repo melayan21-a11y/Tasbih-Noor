@@ -287,6 +287,51 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
         stopAutoGuide()
     }
 
+    fun selectNextDhikr() {
+        if (_isSalahSetMode.value) {
+            val nextStage = when (_salahSetStage.value) {
+                SalahSetStage.SUBHANALLAH -> SalahSetStage.ALHAMDULILLAH
+                SalahSetStage.ALHAMDULILLAH -> SalahSetStage.ALLAHU_AKBAR
+                SalahSetStage.ALLAHU_AKBAR -> SalahSetStage.TAHLIL_SEAL
+                SalahSetStage.TAHLIL_SEAL -> {
+                    exitSalahSetMode()
+                    return
+                }
+            }
+            _salahSetStage.value = nextStage
+            _currentCount.value = 0
+            _targetCount.value = nextStage.target
+            return
+        }
+        val list = allDhikrs.value
+        if (list.isEmpty()) return
+        val currentId = _selectedDhikr.value?.id
+        val currentIndex = list.indexOfFirst { it.id == currentId }
+        val nextIndex = if (currentIndex >= 0 && currentIndex < list.size - 1) currentIndex + 1 else 0
+        selectDhikr(list[nextIndex])
+    }
+
+    fun selectPreviousDhikr() {
+        if (_isSalahSetMode.value) {
+            val prevStage = when (_salahSetStage.value) {
+                SalahSetStage.SUBHANALLAH -> return
+                SalahSetStage.ALHAMDULILLAH -> SalahSetStage.SUBHANALLAH
+                SalahSetStage.ALLAHU_AKBAR -> SalahSetStage.ALHAMDULILLAH
+                SalahSetStage.TAHLIL_SEAL -> SalahSetStage.ALLAHU_AKBAR
+            }
+            _salahSetStage.value = prevStage
+            _currentCount.value = 0
+            _targetCount.value = prevStage.target
+            return
+        }
+        val list = allDhikrs.value
+        if (list.isEmpty()) return
+        val currentId = _selectedDhikr.value?.id
+        val currentIndex = list.indexOfFirst { it.id == currentId }
+        val prevIndex = if (currentIndex > 0) currentIndex - 1 else list.size - 1
+        selectDhikr(list[prevIndex])
+    }
+
     fun onBeadPulled() {
         if (_isSalahSetMode.value) {
             audioHapticManager.playBeadSound(_soundType.value)

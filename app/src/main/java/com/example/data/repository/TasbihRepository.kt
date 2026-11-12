@@ -76,6 +76,37 @@ class TasbihRepository(
         dhikrDao.removeDuplicates()
         if (dhikrDao.countDhikrItems() == 0) {
             com.example.data.TasbihDatabase.populateInitialAdhkar(dhikrDao)
+        } else {
+            // Check if combined "SubhanAllahi wa bihamdihi, SubhanAllahil Azeem" exists in DB and split it
+            val all = dhikrDao.getAllDhikrList()
+            val combined = all.find { it.transliteration.contains("bihamdihi", ignoreCase = true) && it.transliteration.contains("Azeem", ignoreCase = true) }
+            if (combined != null) {
+                dhikrDao.updateDhikr(
+                    combined.copy(
+                        arabicText = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+                        transliteration = "SubhanAllahi wa bihamdihi",
+                        englishTranslation = "Glory be to Allah and His praise",
+                        virtues = "Whoever says this 100 times in the morning and evening, his sins will be forgiven even if like the foam of the sea (Bukhari 6405)."
+                    )
+                )
+            }
+            // Check if SubhanAllahil 'Azeem exists
+            val hasAzeem = all.any { it.transliteration.equals("SubhanAllahil 'Azeem", ignoreCase = true) || (it.transliteration.contains("Azeem", ignoreCase = true) && !it.transliteration.contains("bihamdihi", ignoreCase = true)) }
+            if (!hasAzeem) {
+                dhikrDao.insertDhikr(
+                    com.example.data.model.DhikrItem(
+                        id = 71L,
+                        arabicText = "سُبْحَانَ اللَّهِ الْعَظِيمِ",
+                        transliteration = "SubhanAllahil 'Azeem",
+                        englishTranslation = "Glory be to Allah the Magnificent",
+                        category = "Daily",
+                        defaultTarget = 100,
+                        virtues = "Beloved to the Most Merciful, light on the tongue, heavy on the divine scales of deeds (Sahih al-Bukhari 6682).",
+                        reference = "Sahih al-Bukhari",
+                        orderIndex = 8
+                    )
+                )
+            }
         }
     }
 

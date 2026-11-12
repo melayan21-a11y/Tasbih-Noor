@@ -119,14 +119,25 @@ abstract class TasbihDatabase : RoomDatabase() {
                 ),
                 DhikrItem(
                     id = 7L,
-                    arabicText = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ ، سُبْحَانَ اللَّهِ الْعَظِيمِ",
-                    transliteration = "SubhanAllahi wa bihamdihi, SubhanAllahil Azeem",
-                    englishTranslation = "Glory be to Allah and His praise, Glory be to Allah the Supreme",
+                    arabicText = "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ",
+                    transliteration = "SubhanAllahi wa bihamdihi",
+                    englishTranslation = "Glory be to Allah and His praise",
                     category = "Daily",
                     defaultTarget = 100,
-                    virtues = "Two words beloved to the Most Merciful, light on the tongue, heavy on the scales (Bukhari 6682).",
+                    virtues = "Whoever says this 100 times in the morning and evening, his sins will be forgiven even if like the foam of the sea (Bukhari 6405).",
                     reference = "Sahih al-Bukhari",
                     orderIndex = 7
+                ),
+                DhikrItem(
+                    id = 71L,
+                    arabicText = "سُبْحَانَ اللَّهِ الْعَظِيمِ",
+                    transliteration = "SubhanAllahil 'Azeem",
+                    englishTranslation = "Glory be to Allah the Magnificent",
+                    category = "Daily",
+                    defaultTarget = 100,
+                    virtues = "Beloved to the Most Merciful, light on the tongue, heavy on the divine scales of deeds (Sahih al-Bukhari 6682).",
+                    reference = "Sahih al-Bukhari",
+                    orderIndex = 8
                 ),
                 DhikrItem(
                     id = 8L,

@@ -115,7 +115,9 @@ fun TasbihApp(viewModel: TasbihViewModel) {
             viewModel = viewModel,
             initialType = activeAthkarType ?: AthkarType.MORNING,
             onBack = { activeAthkarType = null },
-            modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars)
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.statusBars)
         )
     } else {
 
