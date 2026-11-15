@@ -63,8 +63,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
@@ -72,6 +75,7 @@ import com.example.data.model.AthkarItem
 import com.example.data.model.AthkarRepository
 import com.example.data.model.AthkarType
 import com.example.data.model.DhikrItem
+import com.example.ui.theme.ArabicCalligraphyFontFamily
 import com.example.ui.theme.DayEmeraldDeep
 import com.example.ui.theme.EmeraldDeep
 import com.example.ui.theme.EmeraldPrimary
@@ -231,7 +235,18 @@ fun AthkarReaderScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "${selectedType.titleEnglish} (${selectedType.titleArabic})",
+                    text = buildAnnotatedString {
+                        append("${selectedType.titleEnglish}  ")
+                        withStyle(
+                            SpanStyle(
+                                fontFamily = ArabicCalligraphyFontFamily,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Normal
+                            )
+                        ) {
+                            append(selectedType.titleArabic)
+                        }
+                    },
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (isNightMode) GoldLight else EmeraldDeep
@@ -401,14 +416,15 @@ fun AthkarReaderScreen(
                                 .weight(1f)
                                 .verticalScroll(rememberScrollState())
                         ) {
-                            // Arabic Text in magnificent calligraphy layout
+                            // Arabic Text in authentic Amiri Naskh calligraphy
                             Text(
                                 text = currentItem.arabicText,
-                                fontSize = 21.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontFamily = ArabicCalligraphyFontFamily,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Normal,
                                 color = if (isNightMode) GoldLight else DayEmeraldDeep,
                                 textAlign = TextAlign.Right,
-                                lineHeight = 36.sp,
+                                lineHeight = 42.sp,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp)

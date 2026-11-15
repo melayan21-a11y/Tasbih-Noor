@@ -16,15 +16,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
+import com.example.ui.theme.EmeraldDeep
+import com.example.ui.theme.EmeraldPrimary
 import com.example.ui.theme.GoldDark
 import com.example.ui.theme.GoldLight
 import com.example.ui.theme.GoldPrimary
@@ -125,18 +131,35 @@ fun DraggablePrayerBeads(
     val coroutineScope = rememberCoroutineScope()
     // Cumulative continuous bead position offset
     val beadOffsetAnim = remember { Animatable(0f) }
+    // Pendulum swing angle (in degrees) for the Karkousha silk tassel
+    val tasselAngleAnim = remember { Animatable(0f) }
     var accumulatedDrag by remember { mutableFloatStateOf(0f) }
     var hasPassedBeadInCurrentGesture by remember { mutableStateOf(false) }
 
     val threshold = tension.dragDistancePx
 
+    fun triggerTasselSwing(impulseDeg: Float) {
+        coroutineScope.launch {
+            val clamped = impulseDeg.coerceIn(-22f, 22f)
+            tasselAngleAnim.snapTo(clamped)
+            tasselAngleAnim.animateTo(
+                targetValue = 0f,
+                animationSpec = spring(
+                    dampingRatio = 0.34f,
+                    stiffness = 110f
+                )
+            )
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
+            .clipToBounds()
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = {
-                        // Single tap advances exactly one bead smoothly
+                        // Single tap advances exactly one bead smoothly and gently swings the tassel
                         coroutineScope.launch {
                             beadOffsetAnim.animateTo(
                                 targetValue = beadOffsetAnim.value + 1f,
@@ -146,6 +169,7 @@ fun DraggablePrayerBeads(
                                 )
                             )
                         }
+                        triggerTasselSwing(11f)
                         onBeadPulled()
                     }
                 )
@@ -159,6 +183,12 @@ fun DraggablePrayerBeads(
                     onDrag = { change, dragAmount ->
                         change.consume()
                         val deltaX = -dragAmount.x + (dragAmount.y * 0.20f)
+
+                        // Gently tilt tassel during drag
+                        val dragTilt = (tasselAngleAnim.value * 0.72f + (deltaX * 0.28f)).coerceIn(-22f, 22f)
+                        coroutineScope.launch {
+                            tasselAngleAnim.snapTo(dragTilt)
+                        }
 
                         // If single-bead lock is enabled and the user has already pulled 1 bead in this swipe:
                         // Apply strong rubber-band resistance so it cannot accidentally scroll 3 to 5 beads!
@@ -184,7 +214,7 @@ fun DraggablePrayerBeads(
                         }
                     },
                     onDragEnd = {
-                        // Spring snap to nearest bead position
+                        // Spring snap to nearest bead position & let Karkousha tassel swing naturally back to rest
                         val target = kotlin.math.round(beadOffsetAnim.value)
                         coroutineScope.launch {
                             beadOffsetAnim.animateTo(
@@ -192,6 +222,15 @@ fun DraggablePrayerBeads(
                                 animationSpec = spring(
                                     dampingRatio = Spring.DampingRatioMediumBouncy,
                                     stiffness = Spring.StiffnessLow
+                                )
+                            )
+                        }
+                        coroutineScope.launch {
+                            tasselAngleAnim.animateTo(
+                                targetValue = 0f,
+                                animationSpec = spring(
+                                    dampingRatio = 0.32f,
+                                    stiffness = 105f
                                 )
                             )
                         }
@@ -203,6 +242,15 @@ fun DraggablePrayerBeads(
                         coroutineScope.launch {
                             beadOffsetAnim.animateTo(target)
                         }
+                        coroutineScope.launch {
+                            tasselAngleAnim.animateTo(
+                                targetValue = 0f,
+                                animationSpec = spring(
+                                    dampingRatio = 0.35f,
+                                    stiffness = 120f
+                                )
+                            )
+                        }
                         accumulatedDrag = 0f
                         hasPassedBeadInCurrentGesture = false
                     }
@@ -213,14 +261,13 @@ fun DraggablePrayerBeads(
             val width = size.width
             val height = size.height
 
-            val centerY = height * 0.50f
+            // Position the bead strand slightly above vertical midpoint so the Karkousha tassel hangs gracefully underneath
+            val beadRadius = (width * 0.105f).coerceIn(38f, 52f)
+            val beadSpacing = beadRadius * 2.30f
+            val centerY = (height * 0.39f).coerceAtLeast(beadRadius * 1.48f)
             val centerX = width * 0.50f
 
-            // LARGE BEADS: radius ~46f to 52f (~92-104px diameter)
-            val beadRadius = (width * 0.105f).coerceIn(40f, 54f)
-            val beadSpacing = beadRadius * 2.30f
-
-            // 1. Draw horizontal braided silk rosary string with gentle natural sag
+            // 1. Braided silk rosary string with natural catenary sag
             val stringSag = 16f
             val stringPath = Path().apply {
                 moveTo(0f, centerY - 6f)
@@ -231,35 +278,50 @@ fun DraggablePrayerBeads(
                 )
             }
 
-            // String shadow
+            // Soft cord drop shadow
             drawPath(
                 path = stringPath,
-                color = Color.Black.copy(alpha = if (isNightMode) 0.6f else 0.18f),
-                style = Stroke(width = 8.5f, cap = StrokeCap.Round)
+                color = Color.Black.copy(alpha = if (isNightMode) 0.65f else 0.20f),
+                style = Stroke(width = 10.0f, cap = StrokeCap.Round)
             )
 
-            // Braided silk string cord
-            val cordColor = if (isNightMode) GoldPrimary.copy(alpha = 0.85f) else Color(0xFF8B6B38)
+            // Base woven silk cord
+            val cordDark = if (isNightMode) GoldDark else Color(0xFF6B5027)
+            val cordBright = if (isNightMode) GoldLight else Color(0xFFB38E4F)
             drawPath(
                 path = stringPath,
-                color = cordColor,
-                style = Stroke(width = 6.0f, cap = StrokeCap.Round)
+                color = cordDark,
+                style = Stroke(width = 6.8f, cap = StrokeCap.Round)
             )
 
-            // 2. Draw Center Counter Divider / Indicator Line
-            drawCenterMarker(
+            // Subtle helical braid weave highlights along the cord
+            drawPath(
+                path = stringPath,
+                color = cordBright.copy(alpha = 0.85f),
+                style = Stroke(
+                    width = 3.2f,
+                    cap = StrokeCap.Round,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(9f, 9f), phase = 0f)
+                )
+            )
+
+            // 2. Center Counter Divider & Swinging Karkousha Tassel below the clasp
+            val centerCordY = centerY + stringSag * 0.85f
+            drawCenterMarkerAndTassel(
                 centerX = centerX,
-                centerY = centerY + stringSag * 0.85f,
+                centerY = centerCordY,
                 beadRadius = beadRadius,
+                canvasHeight = height,
+                tasselAngleDeg = tasselAngleAnim.value,
+                material = material,
                 isNightMode = isNightMode
             )
 
-            // 3. Render Large Beads sliding across the screen
+            // 3. Render Large 3D Beads sliding across the cord
             val currentOffsetFraction = beadOffsetAnim.value
             val baseBeadIndex = currentOffsetFraction.toInt()
             val fractionalShift = (currentOffsetFraction - baseBeadIndex) * beadSpacing
 
-            // Determine how many beads can span across screen
             val beadsHalfCount = (width / beadSpacing).toInt() + 2
 
             for (i in -beadsHalfCount..beadsHalfCount) {
@@ -296,21 +358,52 @@ private fun DrawScope.drawLarge3DBead(
     isHighlighted: Boolean,
     isNightMode: Boolean
 ) {
-    // 1. Soft Drop Shadow
+    // 1. Soft multi-layer Drop Shadow for tactile 3D lift off canvas
     drawCircle(
-        color = Color.Black.copy(alpha = if (isNightMode) 0.70f else 0.30f),
-        radius = radius * 1.10f,
-        center = Offset(center.x + 3.5f, center.y + 6.0f)
+        color = Color.Black.copy(alpha = if (isNightMode) 0.55f else 0.16f),
+        radius = radius * 1.16f,
+        center = Offset(center.x + 4f, center.y + 8f)
+    )
+    drawCircle(
+        color = Color.Black.copy(alpha = if (isNightMode) 0.65f else 0.26f),
+        radius = radius * 1.04f,
+        center = Offset(center.x + 2.5f, center.y + 4.5f)
     )
 
-    // 2. Ambient Occlusion edge
+    // 2. Metallic Gold Ferrules (end-caps) flanking Marker Imamah beads on the cord
+    if (isMarker) {
+        val capOffset = radius * 0.98f
+        val leftCap = Path().apply {
+            moveTo(center.x - capOffset - radius * 0.22f, center.y - radius * 0.17f)
+            lineTo(center.x - capOffset + radius * 0.10f, center.y - radius * 0.30f)
+            lineTo(center.x - capOffset + radius * 0.10f, center.y + radius * 0.30f)
+            lineTo(center.x - capOffset - radius * 0.22f, center.y + radius * 0.17f)
+            close()
+        }
+        val rightCap = Path().apply {
+            moveTo(center.x + capOffset + radius * 0.22f, center.y - radius * 0.17f)
+            lineTo(center.x + capOffset - radius * 0.10f, center.y - radius * 0.30f)
+            lineTo(center.x + capOffset - radius * 0.10f, center.y + radius * 0.30f)
+            lineTo(center.x + capOffset + radius * 0.22f, center.y + radius * 0.17f)
+            close()
+        }
+        val capBrush = Brush.verticalGradient(
+            colors = listOf(GoldLight, GoldPrimary, GoldDark),
+            startY = center.y - radius * 0.30f,
+            endY = center.y + radius * 0.30f
+        )
+        drawPath(path = leftCap, brush = capBrush)
+        drawPath(path = rightCap, brush = capBrush)
+    }
+
+    // 3. Ambient Occlusion edge
     drawCircle(
         color = Color.Black.copy(alpha = 0.40f),
         radius = radius,
         center = center
     )
 
-    // 3. Base Bead 3D Radial Sphere Gradient
+    // 4. Base Bead 3D Radial Sphere Gradient
     val baseColor = if (isMarker) GoldPrimary else material.baseColor
     val lightColor = if (isMarker) GoldLight else material.lightColor
     val darkColor = if (isMarker) GoldDark else material.darkColor
@@ -320,7 +413,7 @@ private fun DrawScope.drawLarge3DBead(
             lightColor,
             baseColor,
             darkColor,
-            Color.Black.copy(alpha = 0.65f)
+            Color.Black.copy(alpha = 0.68f)
         ),
         center = Offset(center.x - radius * 0.34f, center.y - radius * 0.34f),
         radius = radius * 1.35f
@@ -332,196 +425,258 @@ private fun DrawScope.drawLarge3DBead(
         center = center
     )
 
-    // 3b. Natural Mineral Texture (Tiger's Eye Agate chatoyancy bands & striations)
-    if (material == BeadMaterial.TIGER_EYE && !isMarker) {
-        val clipP = Path().apply {
-            addOval(androidx.compose.ui.geometry.Rect(center.x - radius, center.y - radius, center.x + radius, center.y + radius))
-        }
-        clipPath(clipP) {
-            // Silky chatoyancy light band
-            val silkBand = Path().apply {
-                moveTo(center.x - radius * 1.2f, center.y - radius * 0.45f)
-                cubicTo(
-                    center.x - radius * 0.3f, center.y - radius * 0.6f,
-                    center.x + radius * 0.4f, center.y - radius * 0.1f,
-                    center.x + radius * 1.2f, center.y - radius * 0.25f
-                )
-                lineTo(center.x + radius * 1.2f, center.y + radius * 0.35f)
-                cubicTo(
-                    center.x + radius * 0.4f, center.y + radius * 0.5f,
-                    center.x - radius * 0.3f, center.y + radius * 0.05f,
-                    center.x - radius * 1.2f, center.y + radius * 0.2f
-                )
-                close()
-            }
-            drawPath(
-                path = silkBand,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFFE5A638).copy(alpha = 0.85f),
-                        Color(0xFFFFEE93).copy(alpha = 0.95f),
-                        Color(0xFF9E5716).copy(alpha = 0.70f)
-                    ),
-                    start = Offset(center.x - radius, center.y - radius * 0.5f),
-                    end = Offset(center.x + radius, center.y + radius * 0.5f)
-                )
-            )
+    // 4b. Material-Specific Mineral & Artisan Textures
+    val beadClip = Path().apply {
+        addOval(Rect(center.x - radius, center.y - radius, center.x + radius, center.y + radius))
+    }
 
-            // Deep rich chocolate-espresso vein streak
-            val veinStreak = Path().apply {
-                moveTo(center.x - radius * 1.2f, center.y + radius * 0.25f)
-                cubicTo(
-                    center.x - radius * 0.2f, center.y + radius * 0.15f,
-                    center.x + radius * 0.5f, center.y + radius * 0.65f,
-                    center.x + radius * 1.2f, center.y + radius * 0.5f
-                )
-                lineTo(center.x + radius * 1.2f, center.y + radius * 0.75f)
-                cubicTo(
-                    center.x + radius * 0.5f, center.y + radius * 0.9f,
-                    center.x - radius * 0.2f, center.y + radius * 0.4f,
-                    center.x - radius * 1.2f, center.y + radius * 0.5f
-                )
-                close()
-            }
-            drawPath(
-                path = veinStreak,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF2C1304).copy(alpha = 0.85f),
-                        Color(0xFF4A2308).copy(alpha = 0.75f),
-                        Color(0xFF220D02).copy(alpha = 0.90f)
-                    ),
-                    start = Offset(center.x - radius, center.y),
-                    end = Offset(center.x + radius, center.y + radius)
-                )
-            )
+    if (!isMarker) {
+        when (material) {
+            BeadMaterial.TIGER_EYE -> {
+                clipPath(beadClip) {
+                    val silkBand = Path().apply {
+                        moveTo(center.x - radius * 1.2f, center.y - radius * 0.45f)
+                        cubicTo(
+                            center.x - radius * 0.3f, center.y - radius * 0.6f,
+                            center.x + radius * 0.4f, center.y - radius * 0.1f,
+                            center.x + radius * 1.2f, center.y - radius * 0.25f
+                        )
+                        lineTo(center.x + radius * 1.2f, center.y + radius * 0.35f)
+                        cubicTo(
+                            center.x + radius * 0.4f, center.y + radius * 0.5f,
+                            center.x - radius * 0.3f, center.y + radius * 0.05f,
+                            center.x - radius * 1.2f, center.y + radius * 0.2f
+                        )
+                        close()
+                    }
+                    drawPath(
+                        path = silkBand,
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFFE5A638).copy(alpha = 0.85f),
+                                Color(0xFFFFEE93).copy(alpha = 0.95f),
+                                Color(0xFF9E5716).copy(alpha = 0.70f)
+                            ),
+                            start = Offset(center.x - radius, center.y - radius * 0.5f),
+                            end = Offset(center.x + radius, center.y + radius * 0.5f)
+                        )
+                    )
 
-            // Fine chatoyancy micro-grain lines
-            drawLine(
-                color = Color(0xFFFFF3C4).copy(alpha = 0.55f),
-                start = Offset(center.x - radius * 0.85f, center.y - radius * 0.12f),
-                end = Offset(center.x + radius * 0.85f, center.y + radius * 0.08f),
-                strokeWidth = 2.0f
-            )
-            drawLine(
-                color = Color(0xFF381A05).copy(alpha = 0.60f),
-                start = Offset(center.x - radius * 0.9f, center.y + radius * 0.18f),
-                end = Offset(center.x + radius * 0.8f, center.y + radius * 0.38f),
-                strokeWidth = 2.5f
-            )
-            drawLine(
-                color = Color(0xFFFFD54F).copy(alpha = 0.45f),
-                start = Offset(center.x - radius * 0.75f, center.y - radius * 0.32f),
-                end = Offset(center.x + radius * 0.7f, center.y - radius * 0.12f),
-                strokeWidth = 1.8f
-            )
+                    val veinStreak = Path().apply {
+                        moveTo(center.x - radius * 1.2f, center.y + radius * 0.25f)
+                        cubicTo(
+                            center.x - radius * 0.2f, center.y + radius * 0.15f,
+                            center.x + radius * 0.5f, center.y + radius * 0.65f,
+                            center.x + radius * 1.2f, center.y + radius * 0.5f
+                        )
+                        lineTo(center.x + radius * 1.2f, center.y + radius * 0.75f)
+                        cubicTo(
+                            center.x + radius * 0.5f, center.y + radius * 0.9f,
+                            center.x - radius * 0.2f, center.y + radius * 0.4f,
+                            center.x - radius * 1.2f, center.y + radius * 0.5f
+                        )
+                        close()
+                    }
+                    drawPath(
+                        path = veinStreak,
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFF2C1304).copy(alpha = 0.85f),
+                                Color(0xFF4A2308).copy(alpha = 0.75f),
+                                Color(0xFF220D02).copy(alpha = 0.90f)
+                            ),
+                            start = Offset(center.x - radius, center.y),
+                            end = Offset(center.x + radius, center.y + radius)
+                        )
+                    )
+
+                    drawLine(
+                        color = Color(0xFFFFF3C4).copy(alpha = 0.55f),
+                        start = Offset(center.x - radius * 0.85f, center.y - radius * 0.12f),
+                        end = Offset(center.x + radius * 0.85f, center.y + radius * 0.08f),
+                        strokeWidth = 2.0f
+                    )
+                    drawLine(
+                        color = Color(0xFF381A05).copy(alpha = 0.60f),
+                        start = Offset(center.x - radius * 0.9f, center.y + radius * 0.18f),
+                        end = Offset(center.x + radius * 0.8f, center.y + radius * 0.38f),
+                        strokeWidth = 2.5f
+                    )
+                }
+            }
+            BeadMaterial.OLIVE_WOOD -> {
+                clipPath(beadClip) {
+                    drawCircle(
+                        color = Color(0xFF4E2A0E).copy(alpha = 0.24f),
+                        radius = radius * 0.74f,
+                        center = Offset(center.x - radius * 0.25f, center.y),
+                        style = Stroke(width = 1.6f)
+                    )
+                    drawCircle(
+                        color = Color(0xFF4E2A0E).copy(alpha = 0.18f),
+                        radius = radius * 0.46f,
+                        center = Offset(center.x - radius * 0.25f, center.y),
+                        style = Stroke(width = 1.4f)
+                    )
+                }
+            }
+            BeadMaterial.LAPIS_LAZULI -> {
+                clipPath(beadClip) {
+                    // Subtle golden pyrite mineral flecks inside deep ultramarine stone
+                    drawCircle(
+                        color = GoldLight.copy(alpha = 0.65f),
+                        radius = radius * 0.06f,
+                        center = Offset(center.x + radius * 0.28f, center.y - radius * 0.18f)
+                    )
+                    drawCircle(
+                        color = GoldPrimary.copy(alpha = 0.55f),
+                        radius = radius * 0.045f,
+                        center = Offset(center.x - radius * 0.16f, center.y + radius * 0.32f)
+                    )
+                    drawCircle(
+                        color = GoldLight.copy(alpha = 0.45f),
+                        radius = radius * 0.035f,
+                        center = Offset(center.x + radius * 0.10f, center.y + radius * 0.14f)
+                    )
+                }
+            }
+            BeadMaterial.ROYAL_JADE -> {
+                clipPath(beadClip) {
+                    // Translucent inner jade luminescence
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0xFF66BB6A).copy(alpha = 0.32f), Color.Transparent),
+                            center = Offset(center.x + radius * 0.22f, center.y + radius * 0.24f),
+                            radius = radius * 0.75f
+                        ),
+                        radius = radius * 0.75f,
+                        center = Offset(center.x + radius * 0.22f, center.y + radius * 0.24f)
+                    )
+                }
+            }
+            BeadMaterial.PEARL -> {
+                clipPath(beadClip) {
+                    // Iridescent rose-gold nacre sheen
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0xFFFFF0F5).copy(alpha = 0.35f), Color.Transparent),
+                            center = Offset(center.x + radius * 0.25f, center.y + radius * 0.25f),
+                            radius = radius * 0.70f
+                        ),
+                        radius = radius * 0.70f,
+                        center = Offset(center.x + radius * 0.25f, center.y + radius * 0.25f)
+                    )
+                }
+            }
         }
     }
 
-    // 3c. Organic woodgrain rings for Olive Wood
-    if (material == BeadMaterial.OLIVE_WOOD && !isMarker) {
-        val clipP = Path().apply {
-            addOval(androidx.compose.ui.geometry.Rect(center.x - radius, center.y - radius, center.x + radius, center.y + radius))
-        }
-        clipPath(clipP) {
-            drawCircle(
-                color = Color(0xFF4E2A0E).copy(alpha = 0.22f),
-                radius = radius * 0.70f,
-                center = Offset(center.x - radius * 0.25f, center.y),
-                style = Stroke(width = 1.6f)
-            )
-            drawCircle(
-                color = Color(0xFF4E2A0E).copy(alpha = 0.18f),
-                radius = radius * 0.45f,
-                center = Offset(center.x - radius * 0.25f, center.y),
-                style = Stroke(width = 1.4f)
-            )
-        }
+    // 5. Subsurface Rim Light Crescent (bottom-right bounced studio reflection)
+    clipPath(beadClip) {
+        drawCircle(
+            color = lightColor.copy(alpha = if (isNightMode) 0.28f else 0.34f),
+            radius = radius * 0.94f,
+            center = Offset(center.x + radius * 0.06f, center.y + radius * 0.06f),
+            style = Stroke(width = 2.4f)
+        )
     }
 
-    // 4. Bead Core Cord Hole
+    // 6. Bead Core Cord Hole
     drawCircle(
-        color = Color.Black.copy(alpha = 0.55f),
-        radius = radius * 0.14f,
+        color = Color.Black.copy(alpha = 0.58f),
+        radius = radius * 0.13f,
         center = Offset(center.x - radius * 0.88f, center.y)
     )
     drawCircle(
-        color = Color.Black.copy(alpha = 0.55f),
-        radius = radius * 0.14f,
+        color = Color.Black.copy(alpha = 0.58f),
+        radius = radius * 0.13f,
         center = Offset(center.x + radius * 0.88f, center.y)
     )
 
-    // 5. Islamic Gold Filigree Band on Marker Beads
+    // 7. Islamic Gold Filigree Band on Marker Beads
     if (isMarker) {
         drawCircle(
             color = GoldLight,
-            radius = radius * 0.80f,
+            radius = radius * 0.78f,
             center = center,
-            style = Stroke(width = 3.5f)
+            style = Stroke(width = 3.0f)
         )
         drawCircle(
-            color = GoldPrimary,
-            radius = radius * 0.45f,
+            color = GoldDark.copy(alpha = 0.85f),
+            radius = radius * 0.72f,
+            center = center,
+            style = Stroke(width = 1.2f)
+        )
+        drawCircle(
+            color = GoldLight.copy(alpha = 0.9f),
+            radius = radius * 0.42f,
             center = center,
             style = Stroke(width = 2.0f)
         )
     }
 
-    // 6. Specular Glint Highlight
-    val glintAlpha = if (material == BeadMaterial.ROYAL_JADE || material == BeadMaterial.PEARL) 0.90f else 0.70f
+    // 8. Crisp Dual Specular Glint Highlight
+    val glintAlpha = if (material == BeadMaterial.ROYAL_JADE || material == BeadMaterial.PEARL || isMarker) 0.92f else 0.74f
     drawCircle(
-        color = Color.White.copy(alpha = glintAlpha),
-        radius = radius * 0.24f,
-        center = Offset(center.x - radius * 0.38f, center.y - radius * 0.38f)
+        brush = Brush.radialGradient(
+            colors = listOf(Color.White.copy(alpha = glintAlpha), Color.Transparent),
+            center = Offset(center.x - radius * 0.36f, center.y - radius * 0.36f),
+            radius = radius * 0.32f
+        ),
+        radius = radius * 0.32f,
+        center = Offset(center.x - radius * 0.36f, center.y - radius * 0.36f)
     )
     drawCircle(
-        color = Color.White.copy(alpha = 0.85f),
-        radius = radius * 0.08f,
-        center = Offset(center.x - radius * 0.22f, center.y - radius * 0.44f)
+        color = Color.White.copy(alpha = 0.88f),
+        radius = radius * 0.085f,
+        center = Offset(center.x - radius * 0.24f, center.y - radius * 0.42f)
     )
 
-    // 7. Active Crossing Aura Glow when passing center marker
+    // 9. Active Crossing Aura Glow when passing center marker
     if (isHighlighted) {
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    GoldLight.copy(alpha = 0.60f),
-                    GoldPrimary.copy(alpha = 0.25f),
+                    GoldLight.copy(alpha = 0.58f),
+                    GoldPrimary.copy(alpha = 0.24f),
                     Color.Transparent
                 ),
                 center = center,
-                radius = radius * 2.1f
+                radius = radius * 2.15f
             ),
-            radius = radius * 2.1f,
+            radius = radius * 2.15f,
             center = center
         )
     }
 }
 
-private fun DrawScope.drawCenterMarker(
+private fun DrawScope.drawCenterMarkerAndTassel(
     centerX: Float,
     centerY: Float,
     beadRadius: Float,
+    canvasHeight: Float,
+    tasselAngleDeg: Float,
+    material: BeadMaterial,
     isNightMode: Boolean
 ) {
     val markerColor = if (isNightMode) GoldLight else GoldPrimary
     val glowColor = if (isNightMode) GoldPrimary.copy(alpha = 0.35f) else GoldLight.copy(alpha = 0.45f)
 
-    val topY = centerY - beadRadius * 1.6f
-    val bottomY = centerY + beadRadius * 1.6f
+    val topY = centerY - beadRadius * 1.48f
+    val bottomY = centerY + beadRadius * 1.28f
 
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(glowColor, Color.Transparent),
             center = Offset(centerX, centerY),
-            radius = beadRadius * 1.8f
+            radius = beadRadius * 1.85f
         ),
-        radius = beadRadius * 1.8f,
+        radius = beadRadius * 1.85f,
         center = Offset(centerX, centerY)
     )
 
     val topArrow = Path().apply {
-        moveTo(centerX, topY + 12f)
+        moveTo(centerX, topY + 11f)
         lineTo(centerX - 8f, topY)
         lineTo(centerX + 8f, topY)
         close()
@@ -529,18 +684,117 @@ private fun DrawScope.drawCenterMarker(
     drawPath(path = topArrow, color = markerColor)
 
     val bottomArrow = Path().apply {
-        moveTo(centerX, bottomY - 12f)
-        lineTo(centerX - 8f, bottomY)
-        lineTo(centerX + 8f, bottomY)
+        moveTo(centerX, bottomY - 11f)
+        lineTo(centerX - 7f, bottomY)
+        lineTo(centerX + 7f, bottomY)
         close()
     }
     drawPath(path = bottomArrow, color = markerColor)
 
     drawLine(
-        color = markerColor.copy(alpha = 0.4f),
-        start = Offset(centerX, topY + 16f),
-        end = Offset(centerX, bottomY - 16f),
+        color = markerColor.copy(alpha = 0.35f),
+        start = Offset(centerX, topY + 15f),
+        end = Offset(centerX, bottomY - 14f),
         strokeWidth = 2.0f,
-        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
     )
+
+    // Swinging Islamic Karkousha Tassel anchored smoothly beneath the center divider
+    val availableBelow = (canvasHeight - bottomY - 10f).coerceAtLeast(36f)
+    val tasselTotalLen = availableBelow.coerceIn(48f, beadRadius * 1.95f)
+    val pivot = Offset(centerX, bottomY + 3f)
+
+    // Silk strand colors harmonized with bead material and lighting mode
+    val silkBase = when (material) {
+        BeadMaterial.ROYAL_JADE -> if (isNightMode) EmeraldPrimary else EmeraldDeep
+        BeadMaterial.LAPIS_LAZULI -> Color(0xFF1F4E8C)
+        BeadMaterial.TIGER_EYE -> Color(0xFF8C4618)
+        BeadMaterial.PEARL -> if (isNightMode) GoldPrimary else Color(0xFF9E8A63)
+        BeadMaterial.OLIVE_WOOD -> if (isNightMode) Color(0xFF1E6E58) else EmeraldDeep
+    }
+    val silkHighlight = when (material) {
+        BeadMaterial.ROYAL_JADE -> Color(0xFF45A888)
+        BeadMaterial.LAPIS_LAZULI -> Color(0xFF4F81C7)
+        BeadMaterial.TIGER_EYE -> Color(0xFFD4883B)
+        BeadMaterial.PEARL -> GoldLight
+        BeadMaterial.OLIVE_WOOD -> GoldPrimary
+    }
+
+    rotate(degrees = tasselAngleDeg, pivot = pivot) {
+        // Ornate gold clasp ring
+        drawCircle(
+            color = GoldPrimary,
+            radius = 5.5f,
+            center = pivot,
+            style = Stroke(width = 2.6f)
+        )
+
+        // Conical braided gold knot cap (head of Karkousha)
+        val capTopY = pivot.y + 5f
+        val capHeight = (tasselTotalLen * 0.25f).coerceIn(12f, 22f)
+        val capBottomY = capTopY + capHeight
+        val capTopHalfW = 5.5f
+        val capBottomHalfW = 11.5f
+
+        val knotCapPath = Path().apply {
+            moveTo(centerX - capTopHalfW, capTopY)
+            lineTo(centerX + capTopHalfW, capTopY)
+            lineTo(centerX + capBottomHalfW, capBottomY)
+            lineTo(centerX - capBottomHalfW, capBottomY)
+            close()
+        }
+        drawPath(
+            path = knotCapPath,
+            brush = Brush.horizontalGradient(
+                colors = listOf(GoldDark, GoldLight, GoldPrimary, GoldDark),
+                startX = centerX - capBottomHalfW,
+                endX = centerX + capBottomHalfW
+            )
+        )
+
+        // Gold collar ring at base of knot cap
+        drawLine(
+            color = GoldLight,
+            start = Offset(centerX - capBottomHalfW - 1f, capBottomY),
+            end = Offset(centerX + capBottomHalfW + 1f, capBottomY),
+            strokeWidth = 2.6f,
+            cap = StrokeCap.Round
+        )
+
+        // Flowing silk fringe strands fanning out gently
+        val fringeTopY = capBottomY + 2f
+        val fringeBottomY = pivot.y + tasselTotalLen
+        val strandCount = 9
+        for (s in 0 until strandCount) {
+            val fraction = (s / (strandCount - 1).toFloat()) - 0.5f // -0.5..+0.5
+            val startX = centerX + fraction * (capBottomHalfW * 1.65f)
+            val endX = centerX + fraction * (capBottomHalfW * 3.1f)
+            val curveCtrlX = centerX + fraction * (capBottomHalfW * 2.1f)
+            val strandEndY = fringeBottomY - abs(fraction) * 6f
+
+            val strandPath = Path().apply {
+                moveTo(startX, fringeTopY)
+                quadraticTo(
+                    curveCtrlX,
+                    (fringeTopY + strandEndY) * 0.55f,
+                    endX,
+                    strandEndY
+                )
+            }
+            val isAccentStrand = s % 2 == 1
+            drawPath(
+                path = strandPath,
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        if (isAccentStrand) silkHighlight else silkBase,
+                        silkBase.copy(alpha = 0.85f),
+                        (if (isAccentStrand) GoldLight else silkHighlight).copy(alpha = 0.72f)
+                    ),
+                    startY = fringeTopY,
+                    endY = strandEndY
+                ),
+                style = Stroke(width = if (isAccentStrand) 2.2f else 2.8f, cap = StrokeCap.Round)
+            )
+        }
+    }
 }

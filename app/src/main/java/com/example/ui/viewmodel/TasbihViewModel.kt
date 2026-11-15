@@ -26,7 +26,11 @@ import com.example.ui.components.BeadTension
 import com.example.util.AudioHapticManager
 import com.example.util.HapticIntensity
 import com.example.util.SoundEffectType
+import com.example.util.SpeechCadence
 import com.example.util.TasbihPreferences
+import com.example.util.VoiceEngineState
+import com.example.wearsync.WearConnectionStatus
+import com.example.wearsync.WearSyncManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -91,6 +95,7 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     val preferences = TasbihPreferences(application.applicationContext)
     val audioHapticManager = AudioHapticManager(application.applicationContext)
     val reminderManager = DhikrReminderManager(application.applicationContext)
+    val wearSyncManager = WearSyncManager(application.applicationContext)
 
     private val database = TasbihDatabase.getDatabase(application.applicationContext, viewModelScope)
     private val repository = TasbihRepository(database.dhikrDao(), database.dhikrLogDao())
@@ -120,37 +125,6 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _salahSetStage = MutableStateFlow(SalahSetStage.SUBHANALLAH)
     val salahSetStage: StateFlow<SalahSetStage> = _salahSetStage.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            repository.ensureDefaultAdhkarPopulated()
-            // Restore previously selected Dhikr
-            val savedId = preferences.selectedDhikrId
-            allDhikrs.collect { list ->
-                if (_selectedDhikr.value == null && list.isNotEmpty()) {
-                    val matching = list.find { it.id == savedId } ?: list.first()
-                    _selectedDhikr.value = matching
-                    _targetCount.value = if (preferences.savedTargetCount > 0) preferences.savedTargetCount else matching.defaultTarget
-                }
-            }
-        }
-        viewModelScope.launch {
-            todayTotal.collect { count ->
-                preferences.widgetTodayCount = count
-                try {
-                    TasbihAppWidgetProvider.updateAllWidgets(application)
-                } catch (_: Exception) {}
-            }
-        }
-        viewModelScope.launch {
-            streakInfo.collect { streak ->
-                preferences.widgetStreakDays = streak.currentStreak
-                try {
-                    TasbihAppWidgetProvider.updateAllWidgets(application)
-                } catch (_: Exception) {}
-            }
-        }
-    }
 
     // Active Dhikr & Counter State
     private val _selectedDhikr = MutableStateFlow<DhikrItem?>(null)
@@ -189,7 +163,18 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     private val _keepScreenAwake = MutableStateFlow(preferences.keepScreenAwake)
     val keepScreenAwake: StateFlow<Boolean> = _keepScreenAwake.asStateFlow()
 
-    // Auto-Guide & Voice Recitation
+    // Auto-Guide & Natural Voice Engine
+    val voiceState: StateFlow<VoiceEngineState> = audioHapticManager.voiceState
+
+    private val _speechCadence = MutableStateFlow(preferences.speechCadence)
+    val speechCadence: StateFlow<SpeechCadence> = _speechCadence.asStateFlow()
+
+    private val _preferArabicVoice = MutableStateFlow(preferences.preferArabicVoice)
+    val preferArabicVoice: StateFlow<Boolean> = _preferArabicVoice.asStateFlow()
+
+    private val _wearConnectionStatus = MutableStateFlow(WearConnectionStatus())
+    val wearConnectionStatus: StateFlow<WearConnectionStatus> = _wearConnectionStatus.asStateFlow()
+
     private val _isAutoGuiding = MutableStateFlow(false)
     val isAutoGuiding: StateFlow<Boolean> = _isAutoGuiding.asStateFlow()
 
@@ -250,6 +235,45 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
         )
     )
     val prayerTimesResult: StateFlow<PrayerTimesResult> = _prayerTimesResult.asStateFlow()
+
+    init {
+        audioHapticManager.applyVoicePreferences(
+            selectedVoiceName = preferences.selectedVoiceName,
+            cadence = preferences.speechCadence,
+            preferArabic = preferences.preferArabicVoice
+        )
+        viewModelScope.launch {
+            repository.ensureDefaultAdhkarPopulated()
+            // Restore previously selected Dhikr
+            val savedId = preferences.selectedDhikrId
+            allDhikrs.collect { list ->
+                if (_selectedDhikr.value == null && list.isNotEmpty()) {
+                    val matching = list.find { it.id == savedId } ?: list.first()
+                    _selectedDhikr.value = matching
+                    _targetCount.value = if (preferences.savedTargetCount > 0) preferences.savedTargetCount else matching.defaultTarget
+                    syncStateToWear()
+                }
+            }
+        }
+        viewModelScope.launch {
+            todayTotal.collect { count ->
+                preferences.widgetTodayCount = count
+                try {
+                    TasbihAppWidgetProvider.updateAllWidgets(application)
+                } catch (_: Exception) {}
+                syncStateToWear()
+            }
+        }
+        viewModelScope.launch {
+            streakInfo.collect { streak ->
+                preferences.widgetStreakDays = streak.currentStreak
+                try {
+                    TasbihAppWidgetProvider.updateAllWidgets(application)
+                } catch (_: Exception) {}
+            }
+        }
+        refreshWearConnection()
+    }
 
     fun startSalahSetMode() {
         _isSalahSetMode.value = true
@@ -564,6 +588,66 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     fun speakCurrentDhikr() {
         val dhikr = _selectedDhikr.value ?: allDhikrs.value.firstOrNull() ?: return
         audioHapticManager.speakRecitation(dhikr.arabicText, dhikr.transliteration)
+    }
+
+    fun selectTtsVoice(voiceName: String?) {
+        preferences.selectedVoiceName = voiceName
+        audioHapticManager.applyVoicePreferences(
+            selectedVoiceName = voiceName,
+            cadence = _speechCadence.value,
+            preferArabic = _preferArabicVoice.value
+        )
+    }
+
+    fun setSpeechCadence(cadence: SpeechCadence) {
+        _speechCadence.value = cadence
+        preferences.speechCadence = cadence
+        audioHapticManager.applyVoicePreferences(
+            selectedVoiceName = preferences.selectedVoiceName,
+            cadence = cadence,
+            preferArabic = _preferArabicVoice.value
+        )
+    }
+
+    fun setPreferArabicVoice(preferArabic: Boolean) {
+        _preferArabicVoice.value = preferArabic
+        preferences.preferArabicVoice = preferArabic
+        // Reset explicit override if language changed so auto-selection picks best voice for that language
+        preferences.selectedVoiceName = null
+        audioHapticManager.applyVoicePreferences(
+            selectedVoiceName = null,
+            cadence = _speechCadence.value,
+            preferArabic = preferArabic
+        )
+    }
+
+    fun refreshVoices() {
+        audioHapticManager.refreshAndApplyVoice()
+    }
+
+    fun refreshWearConnection() {
+        viewModelScope.launch {
+            _wearConnectionStatus.value = wearSyncManager.getConnectionStatus()
+        }
+    }
+
+    fun syncStateToWear() {
+        viewModelScope.launch {
+            val active = _selectedDhikr.value ?: allDhikrs.value.firstOrNull()
+            val ok = wearSyncManager.pushStateToWatch(
+                dhikrId = active?.id ?: 1L,
+                arabicText = active?.arabicText ?: "سُبْحَانَ اللَّهِ",
+                transliteration = active?.transliteration ?: "SubhanAllah",
+                targetCount = _targetCount.value,
+                todayTotal = todayTotal.value,
+                streakDays = streakInfo.value.currentStreak,
+                isNightMode = _isNightMode.value
+            )
+            if (ok) {
+                val status = wearSyncManager.getConnectionStatus()
+                _wearConnectionStatus.value = status.copy(lastSyncTimeMillis = System.currentTimeMillis())
+            }
+        }
     }
 
     fun addCustomDhikr(

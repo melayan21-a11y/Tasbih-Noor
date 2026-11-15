@@ -58,7 +58,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import com.example.R
+import com.example.data.model.AthkarRepository
 import com.example.data.model.DhikrItem
+import com.example.ui.theme.ArabicCalligraphyFontFamily
 import com.example.ui.theme.DayEmeraldDeep
 import com.example.ui.theme.DayGoldAccent
 import com.example.ui.theme.EmeraldDeep
@@ -176,7 +178,7 @@ fun DhikrLibraryScreen(
                                     color = if (isNightMode) Color(0xFF1B4E3E) else Color(0xFFFFECB3)
                                 ) {
                                     Text(
-                                        text = "22 Duas",
+                                        text = "${AthkarRepository.morningAthkar.size} Duas",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isNightMode) GoldLight else Color(0xFF8D6E63),
@@ -193,8 +195,10 @@ fun DhikrLibraryScreen(
                             )
                             Text(
                                 text = "أَذْكَارُ الصَّبَاحِ",
-                                fontSize = 12.sp,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color(0xFF6D4C41)
+                                fontFamily = ArabicCalligraphyFontFamily,
+                                fontSize = 15.sp,
+                                lineHeight = 22.sp,
+                                color = if (isNightMode) Color.White.copy(alpha = 0.78f) else Color(0xFF6D4C41)
                             )
                         }
                     }
@@ -226,7 +230,7 @@ fun DhikrLibraryScreen(
                                     color = if (isNightMode) Color(0xFF164739) else Color(0xFFC8E6C9)
                                 ) {
                                     Text(
-                                        text = "22 Duas",
+                                        text = "${AthkarRepository.eveningAthkar.size} Duas",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isNightMode) GoldLight else EmeraldDeep,
@@ -243,8 +247,10 @@ fun DhikrLibraryScreen(
                             )
                             Text(
                                 text = "أَذْكَارُ الْمَسَاءِ",
-                                fontSize = 12.sp,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.7f) else EmeraldPrimary
+                                fontFamily = ArabicCalligraphyFontFamily,
+                                fontSize = 15.sp,
+                                lineHeight = 22.sp,
+                                color = if (isNightMode) Color.White.copy(alpha = 0.78f) else EmeraldPrimary
                             )
                         }
                     }
@@ -590,11 +596,13 @@ private fun DhikrCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Arabic
+            // Arabic Calligraphy
             Text(
                 text = item.arabicText,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
+                fontFamily = ArabicCalligraphyFontFamily,
+                fontSize = 23.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 36.sp,
                 color = if (isNightMode) GoldLight else EmeraldDeep,
                 textAlign = TextAlign.Right,
                 modifier = Modifier.fillMaxWidth()

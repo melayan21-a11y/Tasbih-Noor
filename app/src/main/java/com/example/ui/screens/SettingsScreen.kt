@@ -24,20 +24,27 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.StayCurrentPortrait
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -85,9 +92,12 @@ import com.example.ui.theme.GoldLight
 import com.example.ui.theme.GoldPrimary
 import com.example.util.HapticIntensity
 import com.example.util.SoundEffectType
+import com.example.util.SpeechCadence
+import com.example.util.VoiceQualityTier
 import com.example.ui.viewmodel.TasbihViewModel
 import java.util.Locale
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     viewModel: TasbihViewModel,
@@ -103,6 +113,10 @@ fun SettingsScreen(
     val keepScreenAwake by viewModel.keepScreenAwake.collectAsState()
     val reminders by viewModel.reminders.collectAsState()
     val autoGuideSpeed by viewModel.autoGuideSpeedSeconds.collectAsState()
+    val voiceState by viewModel.voiceState.collectAsState()
+    val speechCadence by viewModel.speechCadence.collectAsState()
+    val preferArabicVoice by viewModel.preferArabicVoice.collectAsState()
+    val wearConnectionStatus by viewModel.wearConnectionStatus.collectAsState()
 
     var hasNotificationPermission by remember {
         mutableStateOf(
@@ -643,14 +657,16 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Row(
+                    FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         listOf(
                             SoundEffectType.WOOD_CLICK to "Olive Wood",
                             SoundEffectType.CRYSTAL_CLICK to "Crystal",
                             SoundEffectType.SOFT_CHIME to "Chime",
+                            SoundEffectType.PEARL_TAP to "Pearl",
                             SoundEffectType.MUTE to "Mute"
                         ).forEach { (type, label) ->
                             val isSelected = soundType == type
@@ -662,9 +678,8 @@ fun SettingsScreen(
                                     if (isNightMode) Color(0xFF10332B) else Color(0xFFF1F5F3)
                                 },
                                 modifier = Modifier
-                                    .weight(1f)
                                     .clickable { viewModel.setSoundType(type) }
-                                    .padding(vertical = 2.dp)
+                                    .testTag("sound_chip_${type.name.lowercase()}")
                             ) {
                                 Text(
                                     text = label,
@@ -676,7 +691,7 @@ fun SettingsScreen(
                                         if (isNightMode) Color.White.copy(alpha = 0.8f) else Color.DarkGray
                                     },
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                    modifier = Modifier.padding(vertical = 8.dp)
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)
                                 )
                             }
                         }
@@ -738,6 +753,286 @@ fun SettingsScreen(
                                     modifier = Modifier.padding(vertical = 8.dp)
                                 )
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Recitation Voice & Natural Audio Card
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("recitation_voice_card"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isNightMode) Color(0xFF09241C) else Color.White
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (isNightMode) Color(0xFF1E483C) else Color(0xFFE0E0E0)
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.RecordVoiceOver,
+                                contentDescription = "Recitation Voice",
+                                tint = GoldPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Recitation Voice & Natural Audio",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isNightMode) GoldLight else EmeraldDeep
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Active Voice Status & Quality Badge
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isNightMode) Color(0xFF10332B) else Color(0xFFF1F8F4),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = voiceState.activeVoiceLabel,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (isNightMode) GoldLight else EmeraldDeep,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = when (voiceState.qualityTier) {
+                                        VoiceQualityTier.HD_NEURAL -> EmeraldPrimary
+                                        VoiceQualityTier.STANDARD -> Color(0xFF455A64)
+                                        VoiceQualityTier.SYNTHESIZER_FALLBACK -> Color(0xFFE65100)
+                                    }
+                                ) {
+                                    Text(
+                                        text = voiceState.qualityTier.label,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                            if (voiceState.qualityTier == VoiceQualityTier.SYNTHESIZER_FALLBACK) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Your phone is currently using a basic offline synthesizer. Tap 'Install HD Voices' below to download Google's free natural Arabic voice pack.",
+                                    fontSize = 11.sp,
+                                    color = if (isNightMode) Color.White.copy(alpha = 0.78f) else Color(0xFFBF360C)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Language Mode
+                    Text(
+                        text = "Recitation Language",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isNightMode) Color.White.copy(alpha = 0.85f) else Color(0xFF37474F)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(true to "Arabic Voice", false to "English Translit").forEach { (isArabic, label) ->
+                            val isSelected = preferArabicVoice == isArabic
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) {
+                                    if (isNightMode) GoldPrimary else EmeraldPrimary
+                                } else {
+                                    if (isNightMode) Color(0xFF10332B) else Color(0xFFF1F5F3)
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { viewModel.setPreferArabicVoice(isArabic) }
+                                    .testTag(if (isArabic) "voice_lang_arabic" else "voice_lang_english")
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) {
+                                        if (isNightMode) Color(0xFF071914) else Color.White
+                                    } else {
+                                        if (isNightMode) Color.White.copy(alpha = 0.8f) else Color.DarkGray
+                                    },
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.padding(vertical = 9.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Cadence Speed
+                    Text(
+                        text = "Recitation Cadence",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isNightMode) Color.White.copy(alpha = 0.85f) else Color(0xFF37474F)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        SpeechCadence.entries.forEach { cadence ->
+                            val isSelected = speechCadence == cadence
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) {
+                                    if (isNightMode) GoldPrimary else EmeraldPrimary
+                                } else {
+                                    if (isNightMode) Color(0xFF10332B) else Color(0xFFF1F5F3)
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { viewModel.setSpeechCadence(cadence) }
+                                    .testTag("cadence_${cadence.name.lowercase()}")
+                            ) {
+                                Text(
+                                    text = "${cadence.label} (${cadence.rate}x)",
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) {
+                                        if (isNightMode) Color(0xFF071914) else Color.White
+                                    } else {
+                                        if (isNightMode) Color.White.copy(alpha = 0.8f) else Color.DarkGray
+                                    },
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (voiceState.availableVoices.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Installed System Voices",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isNightMode) Color.White.copy(alpha = 0.85f) else Color(0xFF37474F)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            val isAuto = voiceState.selectedVoiceName == null
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isAuto) {
+                                    if (isNightMode) Color(0xFF133F34) else Color(0xFFE8F5E9)
+                                } else Color.Transparent,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (isAuto) GoldPrimary else if (isNightMode) Color(0xFF1E483C) else Color(0xFFE0E0E0)
+                                ),
+                                modifier = Modifier
+                                    .clickable { viewModel.selectTtsVoice(null) }
+                                    .testTag("voice_option_auto")
+                            ) {
+                                Text(
+                                    text = "Auto Best HD",
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isAuto) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isNightMode) GoldLight else EmeraldDeep,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                )
+                            }
+
+                            voiceState.availableVoices.take(6).forEach { option ->
+                                val selected = voiceState.selectedVoiceName == option.name
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = if (selected) {
+                                        if (isNightMode) Color(0xFF133F34) else Color(0xFFE8F5E9)
+                                    } else Color.Transparent,
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (selected) GoldPrimary else if (isNightMode) Color(0xFF1E483C) else Color(0xFFE0E0E0)
+                                    ),
+                                    modifier = Modifier.clickable { viewModel.selectTtsVoice(option.name) }
+                                ) {
+                                    Text(
+                                        text = option.displayLabel,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isNightMode) Color.White.copy(alpha = 0.9f) else Color.DarkGray,
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { viewModel.speakCurrentDhikr() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isNightMode) GoldPrimary else EmeraldPrimary,
+                                contentColor = if (isNightMode) Color(0xFF071914) else Color.White
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("test_voice_btn")
+                        ) {
+                            Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Test Voice", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = { viewModel.audioHapticManager.openTtsVoiceInstaller(context) },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("install_hd_voices_btn")
+                        ) {
+                            Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Install HD Voices", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -861,6 +1156,119 @@ fun SettingsScreen(
                         ),
                         modifier = Modifier.testTag("keep_awake_switch")
                     )
+                }
+            }
+        }
+
+        // Wear OS Smartwatch Companion & Sync Section
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("wear_companion_card"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isNightMode) Color(0xFF09241C) else Color.White
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (isNightMode) Color(0xFF1E483C) else Color(0xFFE0E0E0)
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Watch,
+                            contentDescription = "Wear OS Smartwatch Companion",
+                            tint = GoldPrimary
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Wear OS Smartwatch Companion",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isNightMode) GoldLight else EmeraldDeep
+                            )
+                            Text(
+                                text = "Includes wrist bead counter, Watch Face Complication, and two-way Data Layer sync",
+                                fontSize = 11.sp,
+                                color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.Gray
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isNightMode) Color(0xFF10332B) else Color(0xFFF1F8F4),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val statusText = when {
+                            wearConnectionStatus.connectedWatches.isNotEmpty() ->
+                                "Connected: ${wearConnectionStatus.connectedWatches.joinToString(", ")}"
+                            wearConnectionStatus.isPlayServicesAvailable ->
+                                "Ready for Wear OS • No paired watch currently reachable"
+                            else ->
+                                "Wear OS Sync standing by (works standalone on Wear OS watches)"
+                        }
+                        Text(
+                            text = statusText,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (wearConnectionStatus.connectedWatches.isNotEmpty()) {
+                                if (isNightMode) GoldLight else EmeraldPrimary
+                            } else {
+                                if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF4A655A)
+                            },
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                viewModel.syncStateToWear()
+                                Toast.makeText(context, "Synced dhikr & progress to Wear OS", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isNightMode) Color(0xFF133F34) else Color(0xFFE8F5E9),
+                                contentColor = if (isNightMode) GoldLight else EmeraldDeep
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("sync_to_watch_btn")
+                        ) {
+                            Icon(imageVector = Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Sync to Watch", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        OutlinedButton(
+                            onClick = { viewModel.refreshWearConnection() },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("check_watch_btn")
+                        ) {
+                            Text("Check Watch", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
                 }
             }
         }

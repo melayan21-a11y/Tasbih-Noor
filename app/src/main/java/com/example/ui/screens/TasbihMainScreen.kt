@@ -68,6 +68,7 @@ import com.example.R
 import com.example.ui.components.BeadMaterial
 import com.example.ui.components.BeadTension
 import com.example.ui.components.DraggablePrayerBeads
+import com.example.ui.theme.ArabicCalligraphyFontFamily
 import com.example.ui.theme.DayEmeraldDeep
 import com.example.ui.theme.DayGoldAccent
 import com.example.ui.theme.EmeraldDark
@@ -79,6 +80,62 @@ import com.example.data.model.AthkarType
 import com.example.ui.theme.NightBackground
 import com.example.ui.viewmodel.SalahSetStage
 import com.example.ui.viewmodel.TasbihViewModel
+
+private enum class SpiritualDayPhase(
+    val label: String,
+    val emoji: String,
+    val athkarType: AthkarType,
+    val athkarLabel: String,
+    val dayOverlayTop: Color,
+    val dayOverlayBottom: Color,
+    val nightTint: Color
+) {
+    DAWN_MORNING(
+        label = "Morning Noor",
+        emoji = "🌅",
+        athkarType = AthkarType.MORNING,
+        athkarLabel = "Morning Adhkar",
+        dayOverlayTop = Color(0xFFFFF8E8),
+        dayOverlayBottom = Color(0xFFF3E7CB),
+        nightTint = Color(0xFF061B1A)
+    ),
+    MIDDAY_DUHA(
+        label = "Midday Light",
+        emoji = "☀️",
+        athkarType = AthkarType.MORNING,
+        athkarLabel = "Morning Adhkar",
+        dayOverlayTop = Color(0xFFFAF7F0),
+        dayOverlayBottom = Color(0xFFEFE6D2),
+        nightTint = Color(0xFF071914)
+    ),
+    AFTERNOON_EVENING(
+        label = "Evening Noor",
+        emoji = "🌇",
+        athkarType = AthkarType.EVENING,
+        athkarLabel = "Evening Adhkar",
+        dayOverlayTop = Color(0xFFFBF3E6),
+        dayOverlayBottom = Color(0xFFEADBC4),
+        nightTint = Color(0xFF0B1C19)
+    ),
+    NIGHT_TRANQUILITY(
+        label = "Night Calm",
+        emoji = "🌙",
+        athkarType = AthkarType.EVENING,
+        athkarLabel = "Evening Adhkar",
+        dayOverlayTop = Color(0xFFF6F4EE),
+        dayOverlayBottom = Color(0xFFE6E0D3),
+        nightTint = Color(0xFF041418)
+    );
+
+    companion object {
+        fun fromHour(hour: Int): SpiritualDayPhase = when (hour) {
+            in 4..11 -> DAWN_MORNING
+            in 12..14 -> MIDDAY_DUHA
+            in 15..19 -> AFTERNOON_EVENING
+            else -> NIGHT_TRANQUILITY
+        }
+    }
+}
 
 @Composable
 fun TasbihMainScreen(
@@ -112,8 +169,11 @@ fun TasbihMainScreen(
     val singleBeadLock by viewModel.singleBeadLock.collectAsState()
     val isAutoGuiding by viewModel.isAutoGuiding.collectAsState()
 
+    val currentHour = remember { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
+    val dayPhase = remember(currentHour) { SpiritualDayPhase.fromHour(currentHour) }
+
     Box(modifier = modifier.fillMaxSize()) {
-        // Night Recitation Mode background or Radiant Day Noor Islamic background
+        // Night Recitation Mode background or Time-Attuned Radiant Day Noor Islamic background
         if (isNightMode) {
             Image(
                 painter = painterResource(id = R.drawable.bg_islamic_night),
@@ -121,14 +181,21 @@ fun TasbihMainScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            // Soft dark overlay
+            // Soft time-aware nocturnal overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.55f))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                dayPhase.nightTint.copy(alpha = 0.60f),
+                                Color.Black.copy(alpha = 0.56f)
+                            )
+                        )
+                    )
             )
         } else {
-            // Luminous Day Noor ambient artwork & warm ivory golden morning gradient
+            // Luminous Day Noor ambient artwork & time-of-day warm ivory/golden gradient
             Image(
                 painter = painterResource(id = R.drawable.bg_islamic_day),
                 contentDescription = "Day ambient background",
@@ -141,9 +208,9 @@ fun TasbihMainScreen(
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color(0xFFFAF7F0).copy(alpha = 0.72f),
-                                Color(0xFFF7F2E6).copy(alpha = 0.62f),
-                                Color(0xFFEFE6D2).copy(alpha = 0.76f)
+                                dayPhase.dayOverlayTop.copy(alpha = 0.72f),
+                                Color(0xFFF7F2E6).copy(alpha = 0.60f),
+                                dayPhase.dayOverlayBottom.copy(alpha = 0.78f)
                             )
                         )
                     )
@@ -223,28 +290,24 @@ fun TasbihMainScreen(
                 }
             }
 
-            // Compact Dual Quick Action Row (Daily Adhkar + After-Salah Set)
-            val currentHour = remember { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
-            val isMorning = currentHour < 14
-            val athkarTypeToRead = if (isMorning) AthkarType.MORNING else AthkarType.EVENING
-
+            // Compact Dual Quick Action Row (Time-Aware Daily Adhkar + After-Salah Set)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // 1. Daily Adhkar Shortcut Pill
+                // 1. Time-Aware Daily Adhkar Shortcut Pill
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = if (isNightMode) Color(0xFF0F362C).copy(alpha = 0.85f) else Color(0xFFFFFBF2).copy(alpha = 0.95f),
+                    color = if (isNightMode) Color(0xFF0F362C).copy(alpha = 0.88f) else Color(0xFFFFFBF2).copy(alpha = 0.96f),
                     border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        if (isNightMode) GoldPrimary.copy(alpha = 0.35f) else Color(0xFFE2D0A4)
+                        1.2.dp,
+                        if (isNightMode) GoldPrimary.copy(alpha = 0.55f) else DayGoldAccent.copy(alpha = 0.55f)
                     ),
                     modifier = Modifier
                         .weight(1f)
-                        .clickable { onOpenAthkarReader(athkarTypeToRead) }
+                        .clickable { onOpenAthkarReader(dayPhase.athkarType) }
                         .testTag("daily_athkar_shortcut")
                 ) {
                     Row(
@@ -256,10 +319,10 @@ fun TasbihMainScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.weight(1f, fill = false)
                         ) {
-                            Text(text = if (isMorning) "🌅" else "🌇", fontSize = 13.sp)
+                            Text(text = dayPhase.emoji, fontSize = 13.sp)
                             Spacer(modifier = Modifier.width(5.dp))
                             Text(
-                                text = if (isMorning) "Morning Adhkar" else "Evening Adhkar",
+                                text = dayPhase.athkarLabel,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = if (isNightMode) GoldLight else DayEmeraldDeep,
@@ -267,13 +330,19 @@ fun TasbihMainScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Text(
-                            text = "➔",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isNightMode) GoldPrimary else DayGoldAccent,
-                            modifier = Modifier.padding(start = 2.dp)
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (isNightMode) GoldPrimary.copy(alpha = 0.22f) else DayGoldAccent.copy(alpha = 0.14f),
+                            modifier = Modifier.padding(start = 4.dp)
+                        ) {
+                            Text(
+                                text = "Now ➔",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isNightMode) GoldLight else DayGoldAccent,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                            )
+                        }
                     }
                 }
 
@@ -461,14 +530,15 @@ fun TasbihMainScreen(
                                 .padding(horizontal = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            // Arabic Calligraphy Text
+                            // Arabic Calligraphy Text (Bundled Amiri Naskh Calligraphy)
                             Text(
                                 text = if (isSalahSetMode) salahSetStage.arabicText else (currentDhikr?.arabicText ?: "سُبْحَانَ اللَّهِ"),
-                                fontSize = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 20.sp else 26.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontFamily = ArabicCalligraphyFontFamily,
+                                fontSize = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 22.sp else 29.sp,
+                                fontWeight = FontWeight.Normal,
                                 color = if (isNightMode) GoldLight else DayEmeraldDeep,
                                 textAlign = TextAlign.Center,
-                                lineHeight = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 30.sp else 36.sp
+                                lineHeight = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 36.sp else 45.sp
                             )
 
                             Spacer(modifier = Modifier.height(4.dp))

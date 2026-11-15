@@ -60,14 +60,18 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.data.prayer.CityLocation
 import com.example.data.prayer.CityLocations
 import com.example.data.prayer.PrayerTimesResult
+import com.example.ui.theme.ArabicCalligraphyFontFamily
 import com.example.ui.theme.DayEmeraldDeep
 import com.example.ui.theme.DayGoldAccent
 import com.example.ui.theme.EmeraldDeep
@@ -153,7 +157,18 @@ fun QiblaScreen(
                         color = if (isNightMode) GoldLight else DayEmeraldDeep
                     )
                     Text(
-                        text = "اتجاه القبلة الشريفة • Kaaba Direction",
+                        text = buildAnnotatedString {
+                            withStyle(
+                                SpanStyle(
+                                    fontFamily = ArabicCalligraphyFontFamily,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Normal
+                                )
+                            ) {
+                                append("اتجاه القبلة الشريفة")
+                            }
+                            append(" • Kaaba Direction")
+                        },
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = if (isNightMode) GoldPrimary.copy(alpha = 0.85f) else DayGoldAccent

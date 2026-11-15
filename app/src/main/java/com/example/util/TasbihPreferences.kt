@@ -124,6 +124,29 @@ class TasbihPreferences(context: Context) {
         get() = prefs.getInt(KEY_WIDGET_REMINDER_INDEX, 0)
         set(value) = prefs.edit().putInt(KEY_WIDGET_REMINDER_INDEX, value).apply()
 
+    // Recitation Voice Preferences
+    var selectedVoiceName: String?
+        get() = prefs.getString(KEY_SELECTED_VOICE_NAME, null)
+        set(value) {
+            if (value == null) prefs.edit().remove(KEY_SELECTED_VOICE_NAME).apply()
+            else prefs.edit().putString(KEY_SELECTED_VOICE_NAME, value).apply()
+        }
+
+    var speechCadence: SpeechCadence
+        get() {
+            val name = prefs.getString(KEY_SPEECH_CADENCE, SpeechCadence.NATURAL.name)
+            return try {
+                SpeechCadence.valueOf(name ?: SpeechCadence.NATURAL.name)
+            } catch (_: Exception) {
+                SpeechCadence.NATURAL
+            }
+        }
+        set(value) = prefs.edit().putString(KEY_SPEECH_CADENCE, value.name).apply()
+
+    var preferArabicVoice: Boolean
+        get() = prefs.getBoolean(KEY_PREFER_ARABIC_VOICE, true)
+        set(value) = prefs.edit().putBoolean(KEY_PREFER_ARABIC_VOICE, value).apply()
+
     companion object {
         private const val PREFS_NAME = "tasbih_user_preferences"
         private const val KEY_SOUND_TYPE = "pref_sound_type"
@@ -145,6 +168,9 @@ class TasbihPreferences(context: Context) {
         private const val KEY_WIDGET_TODAY_COUNT = "pref_widget_today_count"
         private const val KEY_WIDGET_STREAK_DAYS = "pref_widget_streak_days"
         private const val KEY_WIDGET_REMINDER_INDEX = "pref_widget_reminder_index"
+        private const val KEY_SELECTED_VOICE_NAME = "pref_selected_voice_name"
+        private const val KEY_SPEECH_CADENCE = "pref_speech_cadence"
+        private const val KEY_PREFER_ARABIC_VOICE = "pref_prefer_arabic_voice"
     }
 }
 
