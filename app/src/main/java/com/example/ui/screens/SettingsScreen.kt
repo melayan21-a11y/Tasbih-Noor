@@ -1162,6 +1162,57 @@ fun SettingsScreen(
 
         // Wear OS Smartwatch Companion & Sync Section
         item {
+            var showWatchSetupGuide by remember { mutableStateOf(false) }
+            var watchInstallMessage by remember { mutableStateOf<String?>(null) }
+
+            if (showWatchSetupGuide) {
+                AlertDialog(
+                    onDismissRequest = { showWatchSetupGuide = false },
+                    title = {
+                        Text(
+                            "Install Tasbih Noor on Your Watch",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(
+                                text = "Android phones do not let one app directly install an APK onto a watch over Bluetooth without Google Play (blocked by Play security policies). You have two ways to install it:",
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "1. Google Play Store (Easiest for Release):\nIn Google Play Console, turn on the Wear OS form factor track and upload the :wear build alongside your phone app. Then tap 'Install on Watch (Play Store)' to open it right on your watch.",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "2. Testing Before Publishing (Sideload):\nFrom your exported project ZIP, build wear/build/outputs/apk/debug/wear-debug.apk (via 'gradle :wear:assembleDebug') and install it onto your watch using Watch Wireless Debugging (adb install wear-debug.apk) or Wear Installer 2.",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(onClick = { showWatchSetupGuide = false }) {
+                            Text("Got It")
+                        }
+                    }
+                )
+            }
+
+            if (watchInstallMessage != null) {
+                AlertDialog(
+                    onDismissRequest = { watchInstallMessage = null },
+                    title = { Text("Watch App Install", fontWeight = FontWeight.Bold) },
+                    text = { Text(watchInstallMessage ?: "", fontSize = 13.sp) },
+                    confirmButton = {
+                        Button(onClick = { watchInstallMessage = null }) {
+                            Text("OK")
+                        }
+                    }
+                )
+            }
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1199,7 +1250,7 @@ fun SettingsScreen(
                                 color = if (isNightMode) GoldLight else EmeraldDeep
                             )
                             Text(
-                                text = "Includes wrist bead counter, Watch Face Complication, and two-way Data Layer sync",
+                                text = "Wrist bead counter, Watch Face Complication, and two-way sync",
                                 fontSize = 11.sp,
                                 color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.Gray
                             )
@@ -1214,27 +1265,53 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         val statusText = when {
+                            wearConnectionStatus.installedWatches.isNotEmpty() ->
+                                "Installed & Connected: ${wearConnectionStatus.installedWatches.joinToString(", ") { it.displayName }}"
+                            wearConnectionStatus.missingAppWatches.isNotEmpty() ->
+                                "Watch paired (${wearConnectionStatus.missingAppWatches.joinToString(", ") { it.displayName }}) — Watch app not installed yet"
                             wearConnectionStatus.connectedWatches.isNotEmpty() ->
                                 "Connected: ${wearConnectionStatus.connectedWatches.joinToString(", ")}"
                             wearConnectionStatus.isPlayServicesAvailable ->
                                 "Ready for Wear OS • No paired watch currently reachable"
                             else ->
-                                "Wear OS Sync standing by (works standalone on Wear OS watches)"
+                                "Wear OS Sync standing by • Pair a Wear OS watch via Bluetooth"
                         }
                         Text(
                             text = statusText,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
-                            color = if (wearConnectionStatus.connectedWatches.isNotEmpty()) {
+                            color = if (wearConnectionStatus.installedWatches.isNotEmpty()) {
                                 if (isNightMode) GoldLight else EmeraldPrimary
                             } else {
-                                if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF4A655A)
+                                if (isNightMode) Color.White.copy(alpha = 0.85f) else Color(0xFF4A655A)
                             },
                             modifier = Modifier.padding(12.dp)
                         )
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
+
+                    Button(
+                        onClick = {
+                            viewModel.openWatchPlayStore { result ->
+                                watchInstallMessage = result.userMessage
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isNightMode) GoldPrimary else EmeraldPrimary,
+                            contentColor = if (isNightMode) Color(0xFF071914) else Color.White
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("install_on_watch_btn")
+                    ) {
+                        Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Install on Watch (Play Store)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1268,6 +1345,18 @@ fun SettingsScreen(
                         ) {
                             Text("Check Watch", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedButton(
+                        onClick = { showWatchSetupGuide = true },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("watch_setup_guide_btn")
+                    ) {
+                        Text("How to Install Watch APK (Testing & Play Store)", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }

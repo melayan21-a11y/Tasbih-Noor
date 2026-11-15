@@ -29,6 +29,7 @@ import com.example.util.SoundEffectType
 import com.example.util.SpeechCadence
 import com.example.util.TasbihPreferences
 import com.example.util.VoiceEngineState
+import com.example.wearsync.WatchInstallLaunchResult
 import com.example.wearsync.WearConnectionStatus
 import com.example.wearsync.WearSyncManager
 import kotlinx.coroutines.Job
@@ -628,6 +629,14 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     fun refreshWearConnection() {
         viewModelScope.launch {
             _wearConnectionStatus.value = wearSyncManager.getConnectionStatus()
+        }
+    }
+
+    fun openWatchPlayStore(onResult: (WatchInstallLaunchResult) -> Unit) {
+        viewModelScope.launch {
+            val result = wearSyncManager.openPlayStoreOnWatch()
+            _wearConnectionStatus.value = wearSyncManager.getConnectionStatus()
+            onResult(result)
         }
     }
 

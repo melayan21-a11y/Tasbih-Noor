@@ -5,6 +5,7 @@ import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import org.junit.Rule
@@ -65,6 +66,18 @@ class AppLaunchRobolectricTest {
 
         composeTestRule.onNode(hasScrollAction()).performScrollToNode(hasTestTag("check_watch_btn"))
         composeTestRule.onNodeWithTag("check_watch_btn").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNode(hasScrollAction()).performScrollToNode(hasTestTag("install_on_watch_btn"))
+        composeTestRule.onNodeWithTag("install_on_watch_btn").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("OK").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNode(hasScrollAction()).performScrollToNode(hasTestTag("watch_setup_guide_btn"))
+        composeTestRule.onNodeWithTag("watch_setup_guide_btn").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Got It").performClick()
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithTag("nav_tab_tasbih").performClick()

@@ -16,8 +16,8 @@ android {
     applicationId = "com.aistudio.tasbihbeads.kxpqla"
     minSdk = 24
     targetSdk = 36
-    versionCode = 10
-    versionName = "10.0"
+    versionCode = 12
+    versionName = "12.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -125,6 +125,7 @@ dependencies {
   implementation(libs.moshi.kotlin)
   implementation(libs.okhttp)
   // implementation(libs.play.services.location)
+  implementation(libs.androidx.wear.remote.interactions)
   implementation(libs.play.services.wearable)
   implementation(libs.retrofit)
   testImplementation(libs.androidx.compose.ui.test.junit4)
