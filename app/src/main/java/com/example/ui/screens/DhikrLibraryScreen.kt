@@ -67,7 +67,8 @@ import com.example.ui.theme.EmeraldDeep
 import com.example.ui.theme.EmeraldPrimary
 import com.example.ui.theme.GoldLight
 import com.example.data.model.AthkarType
-import com.example.ui.theme.GoldPrimary
+import com.example.ui.theme.AppThemeStyle
+import com.example.ui.theme.LocalTasbihPalette
 import com.example.ui.viewmodel.TasbihViewModel
 
 @Composable
@@ -77,9 +78,11 @@ fun DhikrLibraryScreen(
     onOpenAthkarReader: (AthkarType) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val palette = LocalTasbihPalette.current
     val allDhikrs by viewModel.allDhikrs.collectAsState()
     val selectedDhikr by viewModel.selectedDhikr.collectAsState()
-    val isNightMode by viewModel.isNightMode.collectAsState()
+    val isNightMode = palette.isDark
+    val headingColor = if (isNightMode) palette.accentLight else palette.textPrimary
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
@@ -110,18 +113,16 @@ fun DhikrLibraryScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(if (isNightMode) Color(0xFF071914) else Color(0xFFFAF7F0))
+            .background(palette.background)
     ) {
-        // Ambient background artwork for both Night Noor and Day Noor
         Image(
-            painter = painterResource(id = if (isNightMode) R.drawable.bg_islamic_night else R.drawable.bg_islamic_day),
+            painter = painterResource(id = palette.backgroundRes),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
-            alpha = if (isNightMode) 0.22f else 0.16f
+            alpha = if (isNightMode) 0.25f else 0.17f
         )
 
-        // Full-Page Unified Scrollable Container: No more cramped half-page scroll section!
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
@@ -134,13 +135,13 @@ fun DhikrLibraryScreen(
                         text = "Adhkar & Prayers Library",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isNightMode) GoldLight else EmeraldDeep
+                        color = headingColor
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "Select any prayer to recite on the beads with target guidance",
                         fontSize = 13.sp,
-                        color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color(0xFF5A7268)
+                        color = palette.textSecondary
                     )
                 }
             }
@@ -159,11 +160,11 @@ fun DhikrLibraryScreen(
                             .testTag("morning_adhkar_booklet_card"),
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isNightMode) Color(0xFF10362B) else Color(0xFFFFF8E1)
+                            containerColor = palette.surface.copy(alpha = 0.94f)
                         ),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
-                            if (isNightMode) GoldPrimary.copy(alpha = 0.5f) else Color(0xFFFFD54F)
+                            palette.accent.copy(alpha = 0.55f)
                         )
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -175,13 +176,13 @@ fun DhikrLibraryScreen(
                                 Text(text = "🌅", fontSize = 18.sp)
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isNightMode) Color(0xFF1B4E3E) else Color(0xFFFFECB3)
+                                    color = palette.primaryContainer
                                 ) {
                                     Text(
                                         text = "${AthkarRepository.morningAthkar.size} Duas",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isNightMode) GoldLight else Color(0xFF8D6E63),
+                                        color = headingColor,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
@@ -191,14 +192,14 @@ fun DhikrLibraryScreen(
                                 text = "Morning Adhkar",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isNightMode) GoldLight else Color(0xFF4E342E)
+                                color = headingColor
                             )
                             Text(
                                 text = "أَذْكَارُ الصَّبَاحِ",
                                 fontFamily = ArabicCalligraphyFontFamily,
                                 fontSize = 15.sp,
                                 lineHeight = 22.sp,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.78f) else Color(0xFF6D4C41)
+                                color = if (isNightMode) palette.textPrimary else palette.accent
                             )
                         }
                     }
@@ -211,11 +212,11 @@ fun DhikrLibraryScreen(
                             .testTag("evening_adhkar_booklet_card"),
                         shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isNightMode) Color(0xFF0F3229) else Color(0xFFE8F5E9)
+                            containerColor = palette.surface.copy(alpha = 0.94f)
                         ),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
-                            if (isNightMode) EmeraldPrimary.copy(alpha = 0.5f) else Color(0xFFA5D6A7)
+                            palette.cardBorder
                         )
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -227,13 +228,13 @@ fun DhikrLibraryScreen(
                                 Text(text = "🌇", fontSize = 18.sp)
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = if (isNightMode) Color(0xFF164739) else Color(0xFFC8E6C9)
+                                    color = palette.surfaceVariant
                                 ) {
                                     Text(
                                         text = "${AthkarRepository.eveningAthkar.size} Duas",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isNightMode) GoldLight else EmeraldDeep,
+                                        color = headingColor,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
@@ -243,14 +244,14 @@ fun DhikrLibraryScreen(
                                 text = "Evening Adhkar",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isNightMode) GoldLight else EmeraldDeep
+                                color = headingColor
                             )
                             Text(
                                 text = "أَذْكَارُ الْمَسَاءِ",
                                 fontFamily = ArabicCalligraphyFontFamily,
                                 fontSize = 15.sp,
                                 lineHeight = 22.sp,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.78f) else EmeraldPrimary
+                                color = if (isNightMode) palette.textPrimary else palette.accent
                             )
                         }
                     }
@@ -275,15 +276,11 @@ fun DhikrLibraryScreen(
                         .testTag("salah_set_library_card"),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isNightMode) {
-                            if (isSalahSetMode) Color(0xFF134235) else Color(0xFF0D2A21)
-                        } else {
-                            if (isSalahSetMode) Color(0xFFE8F5E9) else Color(0xFFF1F8F5)
-                        }
+                        containerColor = if (isSalahSetMode) palette.primaryContainer else palette.surface.copy(alpha = 0.94f)
                     ),
                     border = androidx.compose.foundation.BorderStroke(
                         if (isSalahSetMode) 2.dp else 1.dp,
-                        if (isSalahSetMode) GoldPrimary else if (isNightMode) Color(0xFF1E5242) else Color(0xFFC8E6C9)
+                        if (isSalahSetMode) palette.accent else palette.cardBorder
                     )
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
@@ -300,24 +297,24 @@ fun DhikrLibraryScreen(
                                         text = "After-Salah Tasbih Set",
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isNightMode) GoldLight else EmeraldDeep
+                                        color = headingColor
                                     )
                                     Text(
                                         text = "Prophetic 100 Praises Chain • Sunnah",
                                         fontSize = 11.sp,
-                                        color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color(0xFF5A7268)
+                                        color = palette.textSecondary
                                     )
                                 }
                             }
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (isSalahSetMode) GoldPrimary else if (isNightMode) Color(0xFF1B4E3E) else Color(0xFFC8E6C9)
+                                color = if (isSalahSetMode) palette.accent else palette.surfaceVariant
                             ) {
                                 Text(
                                     text = if (isSalahSetMode) "ACTIVE" else "100 TOTAL",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isSalahSetMode) Color(0xFF071914) else if (isNightMode) GoldLight else EmeraldDeep,
+                                    color = if (isSalahSetMode) palette.onPrimaryColor else headingColor,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
                             }
@@ -325,7 +322,6 @@ fun DhikrLibraryScreen(
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        // 4 steps chain preview
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -335,28 +331,28 @@ fun DhikrLibraryScreen(
                                 text = "33 SubhanAllah",
                                 fontSize = 11.sp,
                                 fontWeight = if (isSalahSetMode && salahSetStage.stepIndex == 1) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSalahSetMode && salahSetStage.stepIndex == 1) GoldLight else if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF2E3D36)
+                                color = if (isSalahSetMode && salahSetStage.stepIndex == 1) headingColor else palette.textPrimary.copy(alpha = 0.85f)
                             )
-                            Text(text = "➔", fontSize = 11.sp, color = if (isNightMode) GoldPrimary else EmeraldPrimary)
+                            Text(text = "➔", fontSize = 11.sp, color = palette.accent)
                             Text(
                                 text = "33 Alhamdulillah",
                                 fontSize = 11.sp,
                                 fontWeight = if (isSalahSetMode && salahSetStage.stepIndex == 2) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSalahSetMode && salahSetStage.stepIndex == 2) GoldLight else if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF2E3D36)
+                                color = if (isSalahSetMode && salahSetStage.stepIndex == 2) headingColor else palette.textPrimary.copy(alpha = 0.85f)
                             )
-                            Text(text = "➔", fontSize = 11.sp, color = if (isNightMode) GoldPrimary else EmeraldPrimary)
+                            Text(text = "➔", fontSize = 11.sp, color = palette.accent)
                             Text(
                                 text = "33 Allahu Akbar",
                                 fontSize = 11.sp,
                                 fontWeight = if (isSalahSetMode && salahSetStage.stepIndex == 3) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSalahSetMode && salahSetStage.stepIndex == 3) GoldLight else if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF2E3D36)
+                                color = if (isSalahSetMode && salahSetStage.stepIndex == 3) headingColor else palette.textPrimary.copy(alpha = 0.85f)
                             )
-                            Text(text = "➔", fontSize = 11.sp, color = if (isNightMode) GoldPrimary else EmeraldPrimary)
+                            Text(text = "➔", fontSize = 11.sp, color = palette.accent)
                             Text(
                                 text = "1 Seal",
                                 fontSize = 11.sp,
                                 fontWeight = if (isSalahSetMode && salahSetStage.stepIndex == 4) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSalahSetMode && salahSetStage.stepIndex == 4) GoldLight else if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF2E3D36)
+                                color = if (isSalahSetMode && salahSetStage.stepIndex == 4) headingColor else palette.textPrimary.copy(alpha = 0.85f)
                             )
                         }
 
@@ -371,8 +367,8 @@ fun DhikrLibraryScreen(
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSalahSetMode) GoldPrimary else if (isNightMode) Color(0xFF1E5242) else EmeraldPrimary,
-                                contentColor = if (isSalahSetMode) Color(0xFF071914) else Color.White
+                                containerColor = if (isSalahSetMode) palette.accent else palette.primaryContainer,
+                                contentColor = if (isSalahSetMode) palette.onPrimaryColor else headingColor
                             ),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier
@@ -420,8 +416,8 @@ fun DhikrLibraryScreen(
                             onClick = { selectedCategory = category },
                             label = { Text(category) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = if (isNightMode) GoldPrimary else EmeraldPrimary,
-                                selectedLabelColor = if (isNightMode) Color(0xFF071914) else Color.White
+                                selectedContainerColor = palette.accent,
+                                selectedLabelColor = palette.onPrimaryColor
                             ),
                             modifier = Modifier.testTag("category_chip_$category")
                         )
@@ -442,12 +438,12 @@ fun DhikrLibraryScreen(
                         text = if (selectedCategory == "All") "All Supplications" else "$selectedCategory Prayers",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isNightMode) GoldLight else EmeraldDeep
+                        color = headingColor
                     )
                     Text(
                         text = "${filteredList.size} prayers",
                         fontSize = 12.sp,
-                        color = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray
+                        color = palette.textSecondary
                     )
                 }
             }
@@ -458,7 +454,7 @@ fun DhikrLibraryScreen(
                 DhikrCard(
                     item = item,
                     isActive = isCurrentlyActive,
-                    isNightMode = isNightMode,
+                    palette = palette,
                     onSelect = {
                         viewModel.selectDhikr(item)
                         onDhikrSelected(item)
@@ -472,7 +468,6 @@ fun DhikrLibraryScreen(
                 )
             }
 
-            // 8. Bottom Spacer for FAB and Bottom Navigation
             item {
                 Spacer(modifier = Modifier.height(72.dp))
             }
@@ -481,8 +476,8 @@ fun DhikrLibraryScreen(
         // FAB to add Custom Dhikr
         FloatingActionButton(
             onClick = { showAddDialog = true },
-            containerColor = if (isNightMode) GoldPrimary else EmeraldPrimary,
-            contentColor = if (isNightMode) Color(0xFF071914) else Color.White,
+            containerColor = palette.accent,
+            contentColor = palette.onPrimaryColor,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(20.dp)
@@ -491,7 +486,6 @@ fun DhikrLibraryScreen(
             Icon(imageVector = Icons.Default.Add, contentDescription = "Add Custom Dhikr")
         }
 
-        // Add Custom Dhikr Dialog
         if (showAddDialog) {
             AddCustomDhikrDialog(
                 onDismiss = { showAddDialog = false },
@@ -508,23 +502,20 @@ fun DhikrLibraryScreen(
 private fun DhikrCard(
     item: DhikrItem,
     isActive: Boolean,
-    isNightMode: Boolean,
+    palette: AppThemeStyle,
     onSelect: () -> Unit,
     onPlayAudio: () -> Unit,
     onDelete: (() -> Unit)?
 ) {
+    val headingColor = if (palette.isDark) palette.accentLight else palette.textPrimary
     Card(
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isNightMode) {
-                if (isActive) Color(0xFF0E382E) else Color(0xFF09241C)
-            } else {
-                if (isActive) Color(0xFFE8F5E9) else Color.White
-            }
+            containerColor = if (isActive) palette.primaryContainer.copy(alpha = if (palette.isDark) 0.94f else 0.72f) else palette.surface.copy(alpha = 0.94f)
         ),
         border = androidx.compose.foundation.BorderStroke(
             if (isActive) 2.dp else 1.dp,
-            if (isActive) GoldPrimary else if (isNightMode) Color(0xFF1E483C) else Color(0xFFE0E0E0)
+            if (isActive) palette.accent else palette.cardBorder
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isActive) 4.dp else 1.dp),
         modifier = Modifier
@@ -536,7 +527,6 @@ private fun DhikrCard(
                 .fillMaxWidth()
                 .padding(14.dp)
         ) {
-            // Category & Target Pill Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -545,13 +535,13 @@ private fun DhikrCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = if (isNightMode) GoldPrimary.copy(alpha = 0.2f) else EmeraldPrimary.copy(alpha = 0.1f)
+                        color = palette.accent.copy(alpha = if (palette.isDark) 0.22f else 0.12f)
                     ) {
                         Text(
                             text = item.category,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (isNightMode) GoldLight else EmeraldPrimary,
+                            color = if (palette.isDark) palette.accentLight else palette.accent,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                         )
                     }
@@ -561,7 +551,7 @@ private fun DhikrCard(
                     Text(
                         text = "Target: ${item.defaultTarget}",
                         fontSize = 11.sp,
-                        color = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray
+                        color = palette.textSecondary
                     )
                 }
 
@@ -573,7 +563,7 @@ private fun DhikrCard(
                         Icon(
                             imageVector = Icons.Default.VolumeUp,
                             contentDescription = "Listen to audio",
-                            tint = if (isNightMode) GoldPrimary else EmeraldPrimary,
+                            tint = palette.accent,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -596,45 +586,42 @@ private fun DhikrCard(
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Arabic Calligraphy
             Text(
                 text = item.arabicText,
                 fontFamily = ArabicCalligraphyFontFamily,
                 fontSize = 23.sp,
                 fontWeight = FontWeight.Normal,
                 lineHeight = 36.sp,
-                color = if (isNightMode) GoldLight else EmeraldDeep,
+                color = headingColor,
                 textAlign = TextAlign.Right,
                 modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Transliteration
             Text(
                 text = item.transliteration,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = if (isNightMode) Color.White else Color(0xFF263238)
+                color = palette.textPrimary
             )
 
-            // Translation
             Text(
                 text = item.englishTranslation,
                 fontSize = 12.sp,
-                color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color(0xFF546E7A)
+                color = palette.textSecondary
             )
 
             if (item.virtues.isNotBlank()) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = if (isNightMode) Color(0xFF082018) else Color(0xFFF1F8F4)
+                    color = palette.surfaceVariant.copy(alpha = 0.72f)
                 ) {
                     Text(
                         text = "✨ ${item.virtues}",
                         fontSize = 11.sp,
-                        color = if (isNightMode) Color(0xFFA5D6A7) else Color(0xFF2E7D32),
+                        color = if (palette.isDark) palette.accentLight else palette.textPrimary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
@@ -642,20 +629,11 @@ private fun DhikrCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Action: Select for Tasbih
             Button(
                 onClick = onSelect,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isActive) {
-                        if (isNightMode) GoldPrimary else EmeraldPrimary
-                    } else {
-                        if (isNightMode) Color(0xFF133F34) else Color(0xFFE0EAE4)
-                    },
-                    contentColor = if (isActive) {
-                        if (isNightMode) Color(0xFF071914) else Color.White
-                    } else {
-                        if (isNightMode) GoldLight else EmeraldDeep
-                    }
+                    containerColor = if (isActive) palette.accent else palette.surfaceVariant,
+                    contentColor = if (isActive) palette.onPrimaryColor else headingColor
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier

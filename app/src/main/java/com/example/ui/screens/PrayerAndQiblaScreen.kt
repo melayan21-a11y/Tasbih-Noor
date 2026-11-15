@@ -72,14 +72,8 @@ import com.example.data.prayer.CityLocation
 import com.example.data.prayer.CityLocations
 import com.example.data.prayer.PrayerTimesResult
 import com.example.ui.theme.ArabicCalligraphyFontFamily
-import com.example.ui.theme.DayEmeraldDeep
-import com.example.ui.theme.DayGoldAccent
-import com.example.ui.theme.EmeraldDeep
-import com.example.ui.theme.EmeraldPrimary
-import com.example.ui.theme.GoldLight
-import com.example.ui.theme.GoldPrimary
-import com.example.ui.theme.LightBackground
-import com.example.ui.theme.NightBackground
+import com.example.ui.theme.LocalTasbihPalette
+import com.example.ui.theme.AppThemeStyle
 import com.example.ui.viewmodel.TasbihViewModel
 import kotlin.math.abs
 import kotlin.math.cos
@@ -96,7 +90,10 @@ fun QiblaScreen(
     viewModel: TasbihViewModel,
     modifier: Modifier = Modifier
 ) {
-    val isNightMode by viewModel.isNightMode.collectAsState()
+    val palette = LocalTasbihPalette.current
+    val isNightMode = palette.isDark
+    val headingColor = if (isNightMode) palette.accentLight else palette.textPrimary
+
     val selectedCity by viewModel.selectedCity.collectAsState()
     val prayerResult by viewModel.prayerTimesResult.collectAsState()
     val azimuthDegrees by viewModel.azimuthDegrees.collectAsState()
@@ -104,7 +101,6 @@ fun QiblaScreen(
 
     var showCityPicker by remember { mutableStateOf(false) }
 
-    // Start compass sensor when viewing Qibla screen, stop when disposed
     DisposableEffect(Unit) {
         viewModel.compassSensorManager.startListening()
         onDispose {
@@ -115,26 +111,15 @@ fun QiblaScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(if (isNightMode) NightBackground else LightBackground)
+            .background(palette.background)
     ) {
-        // Islamic Background Artwork (Night / Day)
-        if (isNightMode) {
-            Image(
-                painter = painterResource(id = R.drawable.bg_islamic_night),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                alpha = 0.22f
-            )
-        } else {
-            Image(
-                painter = painterResource(id = R.drawable.bg_islamic_day),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                alpha = 0.18f
-            )
-        }
+        Image(
+            painter = painterResource(id = palette.backgroundRes),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            alpha = if (isNightMode) 0.25f else 0.17f
+        )
 
         Column(
             modifier = Modifier
@@ -154,7 +139,7 @@ fun QiblaScreen(
                         text = "Qibla Compass",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isNightMode) GoldLight else DayEmeraldDeep
+                        color = headingColor
                     )
                     Text(
                         text = buildAnnotatedString {
@@ -171,18 +156,15 @@ fun QiblaScreen(
                         },
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = if (isNightMode) GoldPrimary.copy(alpha = 0.85f) else DayGoldAccent
+                        color = palette.accent
                     )
                 }
 
                 // City Selector Pill
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = if (isNightMode) Color(0xFF133F34) else Color(0xFFF3ECE0),
-                    border = BorderStroke(
-                        1.dp,
-                        if (isNightMode) GoldPrimary.copy(alpha = 0.6f) else DayGoldAccent.copy(alpha = 0.4f)
-                    ),
+                    color = palette.primaryContainer.copy(alpha = 0.9f),
+                    border = BorderStroke(1.dp, palette.cardBorder),
                     modifier = Modifier
                         .clickable { showCityPicker = true }
                         .testTag("city_selector_pill")
@@ -194,18 +176,16 @@ fun QiblaScreen(
                         Icon(
                             imageVector = Icons.Default.LocationOn,
                             contentDescription = "Select City",
-                            tint = if (isNightMode) GoldLight else DayEmeraldDeep,
+                            tint = headingColor,
                             modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(5.dp))
-                        Column {
-                            Text(
-                                text = selectedCity.name,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isNightMode) GoldLight else DayEmeraldDeep
-                            )
-                        }
+                        Text(
+                            text = selectedCity.name,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = headingColor
+                        )
                     }
                 }
             }
@@ -216,14 +196,14 @@ fun QiblaScreen(
                 selectedCity = selectedCity,
                 azimuthDegrees = azimuthDegrees,
                 isSensorAvailable = isSensorAvailable,
-                isNightMode = isNightMode
+                palette = palette
             )
         }
 
-        // City Picker Dialog
         if (showCityPicker) {
             CityPickerDialog(
                 currentCity = selectedCity,
+                palette = palette,
                 onDismiss = { showCityPicker = false },
                 onSelectCity = {
                     viewModel.setCity(it)
@@ -234,10 +214,6 @@ fun QiblaScreen(
     }
 }
 
-/**
- * Backward compatibility alias so existing callers or navigation actions
- * seamlessly route to the dedicated Qibla screen.
- */
 @Composable
 fun PrayerAndQiblaScreen(
     viewModel: TasbihViewModel,
@@ -253,8 +229,10 @@ private fun QiblaCompassView(
     selectedCity: CityLocation,
     azimuthDegrees: Float,
     isSensorAvailable: Boolean,
-    isNightMode: Boolean
+    palette: AppThemeStyle
 ) {
+    val isNightMode = palette.isDark
+    val headingColor = if (isNightMode) palette.accentLight else palette.textPrimary
     val haptic = LocalHapticFeedback.current
     val qiblaBearing = result.qiblaBearing
 
@@ -280,7 +258,7 @@ private fun QiblaCompassView(
     )
 
     val alignmentColor by animateColorAsState(
-        targetValue = if (isAligned) GoldPrimary else if (isNightMode) EmeraldPrimary else DayEmeraldDeep,
+        targetValue = if (isAligned) palette.accent else palette.secondaryAccent,
         animationSpec = tween(durationMillis = 300),
         label = "alignment_glow"
     )
@@ -303,17 +281,12 @@ private fun QiblaCompassView(
         contentPadding = PaddingValues(bottom = 80.dp)
     ) {
         item {
-            // Alignment Banner Card
             Surface(
                 shape = RoundedCornerShape(18.dp),
-                color = if (isAligned) {
-                    if (isNightMode) Color(0xFF1B432B) else Color(0xFFE4F4E8)
-                } else {
-                    if (isNightMode) Color(0xFF0F2E24) else Color(0xFFF7F3E9)
-                },
+                color = if (isAligned) palette.primaryContainer.copy(alpha = 0.94f) else palette.surface.copy(alpha = 0.92f),
                 border = BorderStroke(
                     if (isAligned) 2.dp else 1.dp,
-                    if (isAligned) GoldPrimary else if (isNightMode) Color(0xFF1E5242) else Color(0xFFDCC89E)
+                    if (isAligned) palette.accent else palette.cardBorder
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -333,7 +306,7 @@ private fun QiblaCompassView(
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = "Aligned",
-                                tint = if (isNightMode) GoldLight else Color(0xFF2E7D32),
+                                tint = palette.accent,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -348,11 +321,7 @@ private fun QiblaCompassView(
                             },
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isAligned) {
-                                if (isNightMode) GoldLight else DayEmeraldDeep
-                            } else {
-                                if (isNightMode) Color.White else Color(0xFF263238)
-                            }
+                            color = if (isAligned) headingColor else palette.textPrimary
                         )
                     }
 
@@ -363,7 +332,7 @@ private fun QiblaCompassView(
                             "Rotate your device until the gold Kaaba needle points straight up"
                         },
                         fontSize = 11.sp,
-                        color = if (isNightMode) Color.White.copy(alpha = 0.75f) else Color(0xFF5A7268),
+                        color = palette.textSecondary,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 2.dp)
                     )
@@ -372,29 +341,26 @@ private fun QiblaCompassView(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Fixed Top Heading Indicator Arrow
             Icon(
                 imageVector = Icons.Default.Navigation,
                 contentDescription = "Device Facing Direction",
-                tint = if (isAligned) GoldPrimary else if (isNightMode) GoldLight.copy(alpha = 0.7f) else DayGoldAccent,
+                tint = if (isAligned) palette.accent else palette.accentLight.copy(alpha = 0.85f),
                 modifier = Modifier
                     .size(26.dp)
                     .padding(bottom = 2.dp)
             )
 
-            // Compass Dial Canvas
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(290.dp)
                     .testTag("qibla_compass_dial")
             ) {
-                // Background Outer Glow
                 Canvas(modifier = Modifier.size(290.dp)) {
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                alignmentColor.copy(alpha = if (isAligned) 0.40f else 0.12f),
+                                alignmentColor.copy(alpha = if (isAligned) 0.40f else 0.14f),
                                 Color.Transparent
                             ),
                             center = center,
@@ -402,13 +368,12 @@ private fun QiblaCompassView(
                         )
                     )
                     drawCircle(
-                        color = if (isAligned) GoldPrimary else if (isNightMode) Color(0xFF134235) else Color(0xFFD7C7A3),
+                        color = if (isAligned) palette.accent else palette.cardBorder,
                         radius = size.width / 2f - 8f,
                         style = Stroke(width = if (isAligned) 4f else 2.5f)
                     )
                 }
 
-                // Rotating Compass Dial
                 Canvas(
                     modifier = Modifier
                         .size(266.dp)
@@ -418,7 +383,6 @@ private fun QiblaCompassView(
                     val radius = size.width / 2f
                     val center = Offset(radius, radius)
 
-                    // Draw Dial Marks & Cardinal Points
                     for (i in 0 until 360 step 15) {
                         val angleRad = Math.toRadians((i - 90).toDouble())
                         val isCardinal = i % 90 == 0
@@ -438,9 +402,9 @@ private fun QiblaCompassView(
                         )
                         drawLine(
                             color = when {
-                                i == 0 -> Color(0xFFE53935) // North is Red
-                                isCardinal -> if (isNightMode) GoldPrimary else DayEmeraldDeep
-                                else -> if (isNightMode) Color(0xFF2C6B58) else Color(0xFFB0A080)
+                                i == 0 -> Color(0xFFE53935)
+                                isCardinal -> palette.accent
+                                else -> palette.textSecondary.copy(alpha = 0.55f)
                             },
                             start = start,
                             end = end,
@@ -448,40 +412,36 @@ private fun QiblaCompassView(
                         )
                     }
 
-                    // Draw Qibla Pointer Indicator (Ray to Kaaba)
                     val qiblaRad = Math.toRadians((qiblaBearing - 90.0))
                     val qiblaTip = Offset(
                         (center.x + (radius - 36) * cos(qiblaRad)).toFloat(),
                         (center.y + (radius - 36) * sin(qiblaRad)).toFloat()
                     )
 
-                    // Kaaba Ray Line
                     drawLine(
-                        color = Color(0xFFD4AF37),
+                        color = palette.accent,
                         start = center,
                         end = qiblaTip,
                         strokeWidth = 4.5f
                     )
 
-                    // Kaaba Direction Marker Dot
                     drawCircle(
-                        color = Color(0xFFF9E79F),
+                        color = palette.accentLight,
                         radius = 12f,
                         center = qiblaTip
                     )
                     drawCircle(
-                        color = Color(0xFF996515),
+                        color = palette.cordColor,
                         radius = 12f,
                         center = qiblaTip,
                         style = Stroke(width = 2.5f)
                     )
                 }
 
-                // Center Kaaba Emblem
                 Surface(
                     shape = CircleShape,
-                    color = if (isAligned) GoldPrimary else if (isNightMode) Color(0xFF0F362A) else Color(0xFFFFFDF8),
-                    border = BorderStroke(2.5.dp, GoldPrimary),
+                    color = if (isAligned) palette.accent else palette.surface,
+                    border = BorderStroke(2.5.dp, palette.accent),
                     shadowElevation = 6.dp,
                     modifier = Modifier.size(68.dp)
                 ) {
@@ -493,7 +453,6 @@ private fun QiblaCompassView(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Compass Telemetry Cards (2x2 Grid)
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -502,64 +461,58 @@ private fun QiblaCompassView(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Qibla Bearing
                     Card(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isNightMode) Color(0xFF0D2A21) else Color(0xFFF8F4EA)
-                        ),
-                        border = BorderStroke(1.dp, if (isNightMode) Color(0xFF1B4E41) else Color(0xFFE2D4B7))
+                        colors = CardDefaults.cardColors(containerColor = palette.surface.copy(alpha = 0.94f)),
+                        border = BorderStroke(1.dp, palette.cardBorder)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
                                 text = "Qibla Bearing",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.65f) else Color(0xFF6B5838)
+                                color = palette.textSecondary
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "${result.qiblaBearing}°",
                                 fontSize = 19.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isNightMode) GoldLight else DayEmeraldDeep
+                                color = headingColor
                             )
                             Text(
                                 text = "from True North",
                                 fontSize = 10.sp,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.5f) else Color(0xFF8A7650)
+                                color = palette.textSecondary.copy(alpha = 0.78f)
                             )
                         }
                     }
 
-                    // Device Heading
                     Card(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isNightMode) Color(0xFF0D2A21) else Color(0xFFF8F4EA)
-                        ),
-                        border = BorderStroke(1.dp, if (isNightMode) Color(0xFF1B4E41) else Color(0xFFE2D4B7))
+                        colors = CardDefaults.cardColors(containerColor = palette.surface.copy(alpha = 0.94f)),
+                        border = BorderStroke(1.dp, palette.cardBorder)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
                                 text = "Current Heading",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.65f) else Color(0xFF6B5838)
+                                color = palette.textSecondary
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "${azimuthDegrees.roundToInt()}° $cardinalDirection",
                                 fontSize = 19.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isNightMode) GoldLight else DayEmeraldDeep
+                                color = headingColor
                             )
                             Text(
                                 text = if (isAligned) "Aligned with Qibla" else "Deviation: ${abs(relativeAngle.roundToInt())}°",
                                 fontSize = 10.sp,
-                                color = if (isAligned) (if (isNightMode) GoldPrimary else DayEmeraldDeep) else (if (isNightMode) Color.White.copy(alpha = 0.5f) else Color(0xFF8A7650))
+                                color = if (isAligned) palette.accent else palette.textSecondary.copy(alpha = 0.78f)
                             )
                         }
                     }
@@ -569,64 +522,58 @@ private fun QiblaCompassView(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Distance to Kaaba
                     Card(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isNightMode) Color(0xFF0D2A21) else Color(0xFFF8F4EA)
-                        ),
-                        border = BorderStroke(1.dp, if (isNightMode) Color(0xFF1B4E41) else Color(0xFFE2D4B7))
+                        colors = CardDefaults.cardColors(containerColor = palette.surface.copy(alpha = 0.94f)),
+                        border = BorderStroke(1.dp, palette.cardBorder)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
                                 text = "Distance to Makkah",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.65f) else Color(0xFF6B5838)
+                                color = palette.textSecondary
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "${result.distanceToMakkahKm.roundToInt()} km",
                                 fontSize = 19.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isNightMode) GoldLight else DayEmeraldDeep
+                                color = headingColor
                             )
                             Text(
                                 text = "from ${selectedCity.name}",
                                 fontSize = 10.sp,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.5f) else Color(0xFF8A7650)
+                                color = palette.textSecondary.copy(alpha = 0.78f)
                             )
                         }
                     }
 
-                    // Holy Kaaba Coordinates
                     Card(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isNightMode) Color(0xFF0D2A21) else Color(0xFFF8F4EA)
-                        ),
-                        border = BorderStroke(1.dp, if (isNightMode) Color(0xFF1B4E41) else Color(0xFFE2D4B7))
+                        colors = CardDefaults.cardColors(containerColor = palette.surface.copy(alpha = 0.94f)),
+                        border = BorderStroke(1.dp, palette.cardBorder)
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
                                 text = "Holy Sanctuary",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.65f) else Color(0xFF6B5838)
+                                color = palette.textSecondary
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "21.42° N, 39.83° E",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isNightMode) GoldLight else DayEmeraldDeep
+                                color = headingColor
                             )
                             Text(
                                 text = "Makkah al-Mukarramah",
                                 fontSize = 10.sp,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.5f) else Color(0xFF8A7650)
+                                color = palette.textSecondary.copy(alpha = 0.78f)
                             )
                         }
                     }
@@ -635,13 +582,10 @@ private fun QiblaCompassView(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Calibration Guidance & Sensor Status Card
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isNightMode) Color(0xFF092019) else Color(0xFFF4EDE0)
-                ),
-                border = BorderStroke(1.dp, if (isNightMode) Color(0xFF143B30) else Color(0xFFE5D7BE)),
+                colors = CardDefaults.cardColors(containerColor = palette.surfaceVariant.copy(alpha = 0.92f)),
+                border = BorderStroke(1.dp, palette.cardBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -651,7 +595,7 @@ private fun QiblaCompassView(
                     Icon(
                         imageVector = Icons.Default.CompassCalibration,
                         contentDescription = "Calibration",
-                        tint = if (isNightMode) GoldPrimary else DayGoldAccent,
+                        tint = palette.accent,
                         modifier = Modifier
                             .size(20.dp)
                             .padding(top = 2.dp)
@@ -662,21 +606,21 @@ private fun QiblaCompassView(
                             text = "Sensor Calibration & Guidance",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isNightMode) GoldLight else DayEmeraldDeep
+                            color = headingColor
                         )
                         Spacer(modifier = Modifier.height(3.dp))
                         Text(
                             text = "Hold your device flat like a physical compass in your palm. If the heading drifts, move the phone smoothly in a figure-8 motion away from metallic surfaces, laptops, or magnetic cases.",
                             fontSize = 11.sp,
                             lineHeight = 16.sp,
-                            color = if (isNightMode) Color.White.copy(alpha = 0.75f) else Color(0xFF5A7268)
+                            color = palette.textSecondary
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             text = if (isSensorAvailable) "✓ Compass sensor active (3-Axis Vector)" else "⚠️ Compass sensor unavailable on device",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (isSensorAvailable) (if (isNightMode) GoldLight else DayEmeraldDeep) else Color(0xFFE53935)
+                            color = if (isSensorAvailable) headingColor else Color(0xFFE53935)
                         )
                     }
                 }
@@ -688,6 +632,7 @@ private fun QiblaCompassView(
 @Composable
 private fun CityPickerDialog(
     currentCity: CityLocation,
+    palette: AppThemeStyle,
     onDismiss: () -> Unit,
     onSelectCity: (CityLocation) -> Unit
 ) {
@@ -737,10 +682,10 @@ private fun CityPickerDialog(
                                     fontSize = 14.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                 )
-                                Text(text = city.country, fontSize = 11.sp, color = Color.Gray)
+                                Text(text = city.country, fontSize = 11.sp, color = palette.textSecondary)
                             }
                             if (isSelected) {
-                                Text(text = "✓", color = EmeraldPrimary, fontWeight = FontWeight.Bold)
+                                Text(text = "✓", color = palette.accent, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

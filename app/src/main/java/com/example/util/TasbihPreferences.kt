@@ -2,8 +2,10 @@ package com.example.util
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.ui.components.BeadDesign
 import com.example.ui.components.BeadMaterial
 import com.example.ui.components.BeadTension
+import com.example.ui.theme.AppThemeStyle
 
 class TasbihPreferences(context: Context) {
 
@@ -66,9 +68,70 @@ class TasbihPreferences(context: Context) {
             prefs.edit().putString(KEY_BEAD_MATERIAL, value.name).apply()
         }
 
+    var beadDesign: BeadDesign
+        get() {
+            val name = prefs.getString(KEY_BEAD_DESIGN, BeadDesign.CLASSIC_SMOOTH.name)
+            return try {
+                BeadDesign.valueOf(name ?: BeadDesign.CLASSIC_SMOOTH.name)
+            } catch (_: Exception) {
+                BeadDesign.CLASSIC_SMOOTH
+            }
+        }
+        set(value) = prefs.edit().putString(KEY_BEAD_DESIGN, value.name).apply()
+
     var isNightMode: Boolean
         get() = prefs.getBoolean(KEY_IS_NIGHT_MODE, true)
         set(value) = prefs.edit().putBoolean(KEY_IS_NIGHT_MODE, value).apply()
+
+    var appThemeStyle: AppThemeStyle
+        get() {
+            val saved = prefs.getString(KEY_APP_THEME_STYLE, null)
+            if (saved != null) {
+                try {
+                    return AppThemeStyle.valueOf(saved)
+                } catch (_: Exception) {}
+            }
+            return if (isNightMode) AppThemeStyle.MIDNIGHT_EMERALD else AppThemeStyle.RADIANT_IVORY
+        }
+        set(value) {
+            prefs.edit()
+                .putString(KEY_APP_THEME_STYLE, value.name)
+                .putBoolean(KEY_IS_NIGHT_MODE, value.isDark)
+                .apply()
+            if (value.isDark) {
+                lastDarkTheme = value
+            } else {
+                lastLightTheme = value
+            }
+        }
+
+    var lastDarkTheme: AppThemeStyle
+        get() {
+            val saved = prefs.getString(KEY_LAST_DARK_THEME, AppThemeStyle.MIDNIGHT_EMERALD.name)
+            return try {
+                AppThemeStyle.valueOf(saved ?: AppThemeStyle.MIDNIGHT_EMERALD.name)
+                    .takeIf { it.isDark } ?: AppThemeStyle.MIDNIGHT_EMERALD
+            } catch (_: Exception) {
+                AppThemeStyle.MIDNIGHT_EMERALD
+            }
+        }
+        set(value) {
+            if (value.isDark) prefs.edit().putString(KEY_LAST_DARK_THEME, value.name).apply()
+        }
+
+    var lastLightTheme: AppThemeStyle
+        get() {
+            val saved = prefs.getString(KEY_LAST_LIGHT_THEME, AppThemeStyle.RADIANT_IVORY.name)
+            return try {
+                AppThemeStyle.valueOf(saved ?: AppThemeStyle.RADIANT_IVORY.name)
+                    .takeIf { !it.isDark } ?: AppThemeStyle.RADIANT_IVORY
+            } catch (_: Exception) {
+                AppThemeStyle.RADIANT_IVORY
+            }
+        }
+        set(value) {
+            if (!value.isDark) prefs.edit().putString(KEY_LAST_LIGHT_THEME, value.name).apply()
+        }
 
     var keepScreenAwake: Boolean
         get() = prefs.getBoolean(KEY_KEEP_SCREEN_AWAKE, true)
@@ -154,7 +217,11 @@ class TasbihPreferences(context: Context) {
         private const val KEY_BEAD_TENSION = "pref_bead_tension"
         private const val KEY_SINGLE_BEAD_LOCK = "pref_single_bead_lock"
         private const val KEY_BEAD_MATERIAL = "pref_bead_material"
+        private const val KEY_BEAD_DESIGN = "pref_bead_design"
         private const val KEY_IS_NIGHT_MODE = "pref_is_night_mode"
+        private const val KEY_APP_THEME_STYLE = "pref_app_theme_style"
+        private const val KEY_LAST_DARK_THEME = "pref_last_dark_theme"
+        private const val KEY_LAST_LIGHT_THEME = "pref_last_light_theme"
         private const val KEY_KEEP_SCREEN_AWAKE = "pref_keep_screen_awake"
         private const val KEY_SELECTED_DHIKR_ID = "pref_selected_dhikr_id"
         private const val KEY_TARGET_COUNT = "pref_target_count"

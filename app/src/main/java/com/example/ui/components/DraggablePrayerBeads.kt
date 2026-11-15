@@ -48,6 +48,8 @@ import com.example.ui.theme.RoyalJadeDark
 import com.example.ui.theme.RoyalJadeLight
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 
 enum class BeadTension(
     val title: String,
@@ -114,7 +116,69 @@ enum class BeadMaterial(
         lightColor = LapisLight,
         darkColor = LapisDark,
         accentColor = GoldPrimary
+    ),
+    BLACK_ONYX(
+        displayName = "Makkah Black Onyx",
+        baseColor = Color(0xFF1D2027),
+        lightColor = Color(0xFF5D6678),
+        darkColor = Color(0xFF090A0D),
+        accentColor = GoldPrimary
+    ),
+    AMBER_HONEY(
+        displayName = "Baltic Honey Amber",
+        baseColor = Color(0xFFB85D14),
+        lightColor = Color(0xFFF6B042),
+        darkColor = Color(0xFF5A2704),
+        accentColor = Color(0xFFFFE599),
+        isTextured = true
     )
+}
+
+enum class BeadDesign(
+    val title: String,
+    val subtitle: String
+) {
+    CLASSIC_SMOOTH(
+        title = "Classic Smooth",
+        subtitle = "Pure natural grain & mirror luster"
+    ),
+    MAMLUK_GOLD_BAND(
+        title = "Mamluk Gold Band",
+        subtitle = "Inlaid brass meridian filigree belt"
+    ),
+    RUB_AL_HIZB(
+        title = "Rub al-Hizb Star",
+        subtitle = "Carved 8-pointed Islamic star motif"
+    ),
+    ANDALUSIAN_LATTICE(
+        title = "Andalusian Lattice",
+        subtitle = "Fine diamond geometric trellis engraving"
+    ),
+    CRESCENT_INLAY(
+        title = "Hilal & Star Inlay",
+        subtitle = "Embossed crescent moon & star emblem"
+    )
+}
+
+@Composable
+fun BeadCraftPreview(
+    material: BeadMaterial,
+    design: BeadDesign,
+    isNightMode: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier) {
+        val radius = (size.minDimension * 0.42f).coerceAtLeast(8f)
+        drawLarge3DBead(
+            center = Offset(size.width * 0.5f, size.height * 0.5f),
+            radius = radius,
+            material = material,
+            design = design,
+            isMarker = false,
+            isHighlighted = false,
+            isNightMode = isNightMode
+        )
+    }
 }
 
 @Composable
@@ -122,9 +186,13 @@ fun DraggablePrayerBeads(
     currentCount: Int,
     targetCount: Int,
     material: BeadMaterial,
+    design: BeadDesign = BeadDesign.CLASSIC_SMOOTH,
     tension: BeadTension,
     singleBeadLock: Boolean,
     isNightMode: Boolean,
+    cordColor: Color = GoldDark,
+    themeAccent: Color = GoldPrimary,
+    themeAccentLight: Color = GoldLight,
     onBeadPulled: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -285,9 +353,9 @@ fun DraggablePrayerBeads(
                 style = Stroke(width = 10.0f, cap = StrokeCap.Round)
             )
 
-            // Base woven silk cord
-            val cordDark = if (isNightMode) GoldDark else Color(0xFF6B5027)
-            val cordBright = if (isNightMode) GoldLight else Color(0xFFB38E4F)
+            // Base woven silk cord tinted to the active sanctuary theme
+            val cordDark = cordColor
+            val cordBright = themeAccentLight
             drawPath(
                 path = stringPath,
                 color = cordDark,
@@ -314,7 +382,9 @@ fun DraggablePrayerBeads(
                 canvasHeight = height,
                 tasselAngleDeg = tasselAngleAnim.value,
                 material = material,
-                isNightMode = isNightMode
+                isNightMode = isNightMode,
+                markerColorTheme = themeAccent,
+                markerLightTheme = themeAccentLight
             )
 
             // 3. Render Large 3D Beads sliding across the cord
@@ -341,9 +411,12 @@ fun DraggablePrayerBeads(
                     center = Offset(beadX, curveY),
                     radius = if (isMarker) beadRadius * 1.08f else beadRadius,
                     material = material,
+                    design = design,
                     isMarker = isMarker,
                     isHighlighted = isHighlighted,
-                    isNightMode = isNightMode
+                    isNightMode = isNightMode,
+                    highlightAccent = themeAccent,
+                    highlightAccentLight = themeAccentLight
                 )
             }
         }
@@ -354,9 +427,12 @@ private fun DrawScope.drawLarge3DBead(
     center: Offset,
     radius: Float,
     material: BeadMaterial,
+    design: BeadDesign = BeadDesign.CLASSIC_SMOOTH,
     isMarker: Boolean,
     isHighlighted: Boolean,
-    isNightMode: Boolean
+    isNightMode: Boolean,
+    highlightAccent: Color = GoldPrimary,
+    highlightAccentLight: Color = GoldLight
 ) {
     // 1. Soft multi-layer Drop Shadow for tactile 3D lift off canvas
     drawCircle(
@@ -568,7 +644,49 @@ private fun DrawScope.drawLarge3DBead(
                     )
                 }
             }
+            BeadMaterial.BLACK_ONYX -> {
+                clipPath(beadClip) {
+                    // Deep mirror obsidian cool reflection crescent
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0xFF90A4AE).copy(alpha = 0.24f), Color.Transparent),
+                            center = Offset(center.x + radius * 0.24f, center.y + radius * 0.24f),
+                            radius = radius * 0.65f
+                        ),
+                        radius = radius * 0.65f,
+                        center = Offset(center.x + radius * 0.24f, center.y + radius * 0.24f)
+                    )
+                }
+            }
+            BeadMaterial.AMBER_HONEY -> {
+                clipPath(beadClip) {
+                    // Warm translucent amber resin glow + tiny golden mineral inclusion
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0xFFFFD54F).copy(alpha = 0.42f), Color.Transparent),
+                            center = Offset(center.x + radius * 0.18f, center.y + radius * 0.18f),
+                            radius = radius * 0.72f
+                        ),
+                        radius = radius * 0.72f,
+                        center = Offset(center.x + radius * 0.18f, center.y + radius * 0.18f)
+                    )
+                    drawCircle(
+                        color = Color(0xFF4A1D03).copy(alpha = 0.42f),
+                        radius = radius * 0.06f,
+                        center = Offset(center.x - radius * 0.22f, center.y + radius * 0.16f)
+                    )
+                }
+            }
         }
+
+        // 4c. Custom Islamic Bead Engraving & Filigree Craftsmanship
+        drawIslamicBeadDesign(
+            center = center,
+            radius = radius,
+            beadClip = beadClip,
+            material = material,
+            design = design
+        )
     }
 
     // 5. Subsurface Rim Light Crescent (bottom-right bounced studio reflection)
@@ -637,8 +755,8 @@ private fun DrawScope.drawLarge3DBead(
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    GoldLight.copy(alpha = 0.58f),
-                    GoldPrimary.copy(alpha = 0.24f),
+                    highlightAccentLight.copy(alpha = 0.58f),
+                    highlightAccent.copy(alpha = 0.24f),
                     Color.Transparent
                 ),
                 center = center,
@@ -657,10 +775,12 @@ private fun DrawScope.drawCenterMarkerAndTassel(
     canvasHeight: Float,
     tasselAngleDeg: Float,
     material: BeadMaterial,
-    isNightMode: Boolean
+    isNightMode: Boolean,
+    markerColorTheme: Color = GoldPrimary,
+    markerLightTheme: Color = GoldLight
 ) {
-    val markerColor = if (isNightMode) GoldLight else GoldPrimary
-    val glowColor = if (isNightMode) GoldPrimary.copy(alpha = 0.35f) else GoldLight.copy(alpha = 0.45f)
+    val markerColor = if (isNightMode) markerLightTheme else markerColorTheme
+    val glowColor = if (isNightMode) markerColorTheme.copy(alpha = 0.35f) else markerLightTheme.copy(alpha = 0.45f)
 
     val topY = centerY - beadRadius * 1.48f
     val bottomY = centerY + beadRadius * 1.28f
@@ -711,6 +831,8 @@ private fun DrawScope.drawCenterMarkerAndTassel(
         BeadMaterial.TIGER_EYE -> Color(0xFF8C4618)
         BeadMaterial.PEARL -> if (isNightMode) GoldPrimary else Color(0xFF9E8A63)
         BeadMaterial.OLIVE_WOOD -> if (isNightMode) Color(0xFF1E6E58) else EmeraldDeep
+        BeadMaterial.BLACK_ONYX -> if (isNightMode) GoldDark else Color(0xFF262A34)
+        BeadMaterial.AMBER_HONEY -> Color(0xFF9E4B0E)
     }
     val silkHighlight = when (material) {
         BeadMaterial.ROYAL_JADE -> Color(0xFF45A888)
@@ -718,6 +840,8 @@ private fun DrawScope.drawCenterMarkerAndTassel(
         BeadMaterial.TIGER_EYE -> Color(0xFFD4883B)
         BeadMaterial.PEARL -> GoldLight
         BeadMaterial.OLIVE_WOOD -> GoldPrimary
+        BeadMaterial.BLACK_ONYX -> GoldLight
+        BeadMaterial.AMBER_HONEY -> Color(0xFFF6B042)
     }
 
     rotate(degrees = tasselAngleDeg, pivot = pivot) {
@@ -798,3 +922,195 @@ private fun DrawScope.drawCenterMarkerAndTassel(
         }
     }
 }
+
+private fun DrawScope.drawIslamicBeadDesign(
+    center: Offset,
+    radius: Float,
+    beadClip: Path,
+    material: BeadMaterial,
+    design: BeadDesign
+) {
+    if (design == BeadDesign.CLASSIC_SMOOTH) return
+
+    val inlayColor = if (material == BeadMaterial.PEARL) Color(0xFFAA7C22) else GoldLight
+    val trimColor = if (material == BeadMaterial.PEARL) Color(0xFF6B4D12) else GoldPrimary
+    val grooveColor = Color.Black.copy(alpha = 0.45f)
+
+    clipPath(beadClip) {
+        when (design) {
+            BeadDesign.CLASSIC_SMOOTH -> Unit
+
+            BeadDesign.MAMLUK_GOLD_BAND -> {
+                // Vertical equatorial inlaid brass/gold filigree belt with recessed border grooves
+                val bandHalfW = (radius * 0.14f).coerceAtLeast(2.2f)
+                drawRect(
+                    color = grooveColor,
+                    topLeft = Offset(center.x - bandHalfW - 1.4f, center.y - radius),
+                    size = androidx.compose.ui.geometry.Size(bandHalfW * 2f + 2.8f, radius * 2f)
+                )
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(trimColor.copy(alpha = 0.72f), inlayColor, trimColor.copy(alpha = 0.65f)),
+                        startY = center.y - radius,
+                        endY = center.y + radius
+                    ),
+                    topLeft = Offset(center.x - bandHalfW, center.y - radius),
+                    size = androidx.compose.ui.geometry.Size(bandHalfW * 2f, radius * 2f)
+                )
+                // Fine beaded filigree dots down the center of the band
+                for (step in -3..3) {
+                    val dotY = center.y + step * (radius * 0.24f)
+                    drawCircle(
+                        color = grooveColor.copy(alpha = 0.55f),
+                        radius = (radius * 0.045f).coerceAtLeast(1.1f),
+                        center = Offset(center.x + 0.5f, dotY + 0.5f)
+                    )
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.75f),
+                        radius = (radius * 0.04f).coerceAtLeast(1.0f),
+                        center = Offset(center.x, dotY)
+                    )
+                }
+            }
+
+            BeadDesign.RUB_AL_HIZB -> {
+                // Engraved 8-pointed Rub al-Hizb (two overlapping rotated squares + center medallion)
+                val sqHalf = radius * 0.42f
+                val strokeW = (radius * 0.055f).coerceAtLeast(1.3f)
+
+                fun drawSquare(angleDeg: Float, color: Color, offsetPx: Float = 0f, width: Float) {
+                    rotate(degrees = angleDeg, pivot = Offset(center.x + offsetPx, center.y + offsetPx)) {
+                        drawRect(
+                            color = color,
+                            topLeft = Offset(center.x - sqHalf + offsetPx, center.y - sqHalf + offsetPx),
+                            size = androidx.compose.ui.geometry.Size(sqHalf * 2f, sqHalf * 2f),
+                            style = Stroke(width = width)
+                        )
+                    }
+                }
+
+                // Shadow groove then bright gold inlay
+                drawSquare(0f, grooveColor, offsetPx = 1.0f, width = strokeW + 0.8f)
+                drawSquare(45f, grooveColor, offsetPx = 1.0f, width = strokeW + 0.8f)
+                drawSquare(0f, inlayColor.copy(alpha = 0.90f), width = strokeW)
+                drawSquare(45f, inlayColor.copy(alpha = 0.90f), width = strokeW)
+
+                // Inner center star pearl
+                drawCircle(
+                    color = trimColor.copy(alpha = 0.9f),
+                    radius = radius * 0.12f,
+                    center = center,
+                    style = Stroke(width = strokeW * 0.85f)
+                )
+                drawCircle(
+                    color = inlayColor,
+                    radius = radius * 0.05f,
+                    center = center
+                )
+            }
+
+            BeadDesign.ANDALUSIAN_LATTICE -> {
+                // Moroccan diamond cross-hatch trellis carved across the bead face
+                val strokeW = (radius * 0.042f).coerceAtLeast(1.1f)
+                val step = radius * 0.42f
+                for (k in -2..2) {
+                    val shift = k * step
+                    drawLine(
+                        color = grooveColor,
+                        start = Offset(center.x - radius + shift, center.y - radius + 1f),
+                        end = Offset(center.x + radius + shift, center.y + radius + 1f),
+                        strokeWidth = strokeW + 0.6f
+                    )
+                    drawLine(
+                        color = inlayColor.copy(alpha = 0.62f),
+                        start = Offset(center.x - radius + shift, center.y - radius),
+                        end = Offset(center.x + radius + shift, center.y + radius),
+                        strokeWidth = strokeW
+                    )
+                    drawLine(
+                        color = grooveColor,
+                        start = Offset(center.x + radius + shift, center.y - radius + 1f),
+                        end = Offset(center.x - radius + shift, center.y + radius + 1f),
+                        strokeWidth = strokeW + 0.6f
+                    )
+                    drawLine(
+                        color = inlayColor.copy(alpha = 0.62f),
+                        start = Offset(center.x + radius + shift, center.y - radius),
+                        end = Offset(center.x - radius + shift, center.y + radius),
+                        strokeWidth = strokeW
+                    )
+                }
+                // Delicate border halo around lattice
+                drawCircle(
+                    color = trimColor.copy(alpha = 0.72f),
+                    radius = radius * 0.78f,
+                    center = center,
+                    style = Stroke(width = strokeW * 1.1f)
+                )
+            }
+
+            BeadDesign.CRESCENT_INLAY -> {
+                // Crescent Moon (Hilal) + tiny accompanying star embossed in metallic gold
+                val outerR = radius * 0.34f
+                val moonCenter = Offset(center.x - radius * 0.04f, center.y + radius * 0.02f)
+                val outerMoon = Path().apply {
+                    addOval(
+                        Rect(
+                            moonCenter.x - outerR,
+                            moonCenter.y - outerR,
+                            moonCenter.x + outerR,
+                            moonCenter.y + outerR
+                        )
+                    )
+                }
+                val cutR = outerR * 0.80f
+                val cutCenter = Offset(moonCenter.x + outerR * 0.36f, moonCenter.y - outerR * 0.18f)
+                val innerCut = Path().apply {
+                    addOval(
+                        Rect(
+                            cutCenter.x - cutR,
+                            cutCenter.y - cutR,
+                            cutCenter.x + cutR,
+                            cutCenter.y + cutR
+                        )
+                    )
+                }
+                val crescentPath = Path.combine(
+                    operation = androidx.compose.ui.graphics.PathOperation.Difference,
+                    path1 = outerMoon,
+                    path2 = innerCut
+                )
+
+                // Soft engraved shadow under crescent
+                drawPath(
+                    path = crescentPath,
+                    color = grooveColor
+                )
+                drawPath(
+                    path = crescentPath,
+                    brush = Brush.linearGradient(
+                        colors = listOf(inlayColor, trimColor),
+                        start = Offset(moonCenter.x - outerR, moonCenter.y - outerR),
+                        end = Offset(moonCenter.x + outerR, moonCenter.y + outerR)
+                    )
+                )
+
+                // Accompanying 4-point star next to crescent
+                val starCenter = Offset(center.x + radius * 0.24f, center.y - radius * 0.12f)
+                val starR = (radius * 0.11f).coerceAtLeast(2.2f)
+                val starPath = Path().apply {
+                    for (p in 0 until 8) {
+                        val r = if (p % 2 == 0) starR else starR * 0.38f
+                        val ang = Math.toRadians((p * 45.0) - 90.0)
+                        val px = starCenter.x + (cos(ang) * r).toFloat()
+                        val py = starCenter.y + (sin(ang) * r).toFloat()
+                        if (p == 0) moveTo(px, py) else lineTo(px, py)
+                    }
+                    close()
+                }
+                drawPath(path = starPath, color = inlayColor)
+            }
+        }
+    }
+}
+

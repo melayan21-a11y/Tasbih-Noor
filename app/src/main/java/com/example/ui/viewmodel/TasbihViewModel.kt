@@ -21,17 +21,16 @@ import com.example.data.backup.RestoreResult
 import com.example.widget.TasbihAppWidgetProvider
 import com.example.notifications.DhikrReminderManager
 import com.example.notifications.ReminderSetting
+import com.example.ui.components.BeadDesign
 import com.example.ui.components.BeadMaterial
 import com.example.ui.components.BeadTension
+import com.example.ui.theme.AppThemeStyle
 import com.example.util.AudioHapticManager
 import com.example.util.HapticIntensity
 import com.example.util.SoundEffectType
 import com.example.util.SpeechCadence
 import com.example.util.TasbihPreferences
 import com.example.util.VoiceEngineState
-import com.example.wearsync.WatchInstallLaunchResult
-import com.example.wearsync.WearConnectionStatus
-import com.example.wearsync.WearSyncManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -96,7 +95,6 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     val preferences = TasbihPreferences(application.applicationContext)
     val audioHapticManager = AudioHapticManager(application.applicationContext)
     val reminderManager = DhikrReminderManager(application.applicationContext)
-    val wearSyncManager = WearSyncManager(application.applicationContext)
 
     private val database = TasbihDatabase.getDatabase(application.applicationContext, viewModelScope)
     private val repository = TasbihRepository(database.dhikrDao(), database.dhikrLogDao())
@@ -140,12 +138,18 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     private val _targetCount = MutableStateFlow(preferences.savedTargetCount)
     val targetCount: StateFlow<Int> = _targetCount.asStateFlow()
 
-    // Preferences & Modes - Default to beautiful Night Noor Theme
-    private val _isNightMode = MutableStateFlow(preferences.isNightMode)
+    // Preferences & Themes
+    private val _appThemeStyle = MutableStateFlow(preferences.appThemeStyle)
+    val appThemeStyle: StateFlow<AppThemeStyle> = _appThemeStyle.asStateFlow()
+
+    private val _isNightMode = MutableStateFlow(preferences.appThemeStyle.isDark)
     val isNightMode: StateFlow<Boolean> = _isNightMode.asStateFlow()
 
     private val _beadMaterial = MutableStateFlow(preferences.beadMaterial)
     val beadMaterial: StateFlow<BeadMaterial> = _beadMaterial.asStateFlow()
+
+    private val _beadDesign = MutableStateFlow(preferences.beadDesign)
+    val beadDesign: StateFlow<BeadDesign> = _beadDesign.asStateFlow()
 
     private val _soundType = MutableStateFlow(preferences.soundType)
     val soundType: StateFlow<SoundEffectType> = _soundType.asStateFlow()
@@ -172,9 +176,6 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _preferArabicVoice = MutableStateFlow(preferences.preferArabicVoice)
     val preferArabicVoice: StateFlow<Boolean> = _preferArabicVoice.asStateFlow()
-
-    private val _wearConnectionStatus = MutableStateFlow(WearConnectionStatus())
-    val wearConnectionStatus: StateFlow<WearConnectionStatus> = _wearConnectionStatus.asStateFlow()
 
     private val _isAutoGuiding = MutableStateFlow(false)
     val isAutoGuiding: StateFlow<Boolean> = _isAutoGuiding.asStateFlow()
@@ -252,7 +253,6 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
                     val matching = list.find { it.id == savedId } ?: list.first()
                     _selectedDhikr.value = matching
                     _targetCount.value = if (preferences.savedTargetCount > 0) preferences.savedTargetCount else matching.defaultTarget
-                    syncStateToWear()
                 }
             }
         }
@@ -262,7 +262,6 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
                 try {
                     TasbihAppWidgetProvider.updateAllWidgets(application)
                 } catch (_: Exception) {}
-                syncStateToWear()
             }
         }
         viewModelScope.launch {
@@ -273,7 +272,6 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
                 } catch (_: Exception) {}
             }
         }
-        refreshWearConnection()
     }
 
     fun startSalahSetMode() {
@@ -516,13 +514,24 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun setNightMode(enabled: Boolean) {
-        _isNightMode.value = enabled
-        preferences.isNightMode = enabled
+        val nextTheme = if (enabled) preferences.lastDarkTheme else preferences.lastLightTheme
+        setThemeStyle(nextTheme)
+    }
+
+    fun setThemeStyle(style: AppThemeStyle) {
+        _appThemeStyle.value = style
+        _isNightMode.value = style.isDark
+        preferences.appThemeStyle = style
     }
 
     fun setBeadMaterial(material: BeadMaterial) {
         _beadMaterial.value = material
         preferences.beadMaterial = material
+    }
+
+    fun setBeadDesign(design: BeadDesign) {
+        _beadDesign.value = design
+        preferences.beadDesign = design
     }
 
     fun setSoundType(type: SoundEffectType) {
@@ -624,39 +633,6 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
 
     fun refreshVoices() {
         audioHapticManager.refreshAndApplyVoice()
-    }
-
-    fun refreshWearConnection() {
-        viewModelScope.launch {
-            _wearConnectionStatus.value = wearSyncManager.getConnectionStatus()
-        }
-    }
-
-    fun openWatchPlayStore(onResult: (WatchInstallLaunchResult) -> Unit) {
-        viewModelScope.launch {
-            val result = wearSyncManager.openPlayStoreOnWatch()
-            _wearConnectionStatus.value = wearSyncManager.getConnectionStatus()
-            onResult(result)
-        }
-    }
-
-    fun syncStateToWear() {
-        viewModelScope.launch {
-            val active = _selectedDhikr.value ?: allDhikrs.value.firstOrNull()
-            val ok = wearSyncManager.pushStateToWatch(
-                dhikrId = active?.id ?: 1L,
-                arabicText = active?.arabicText ?: "سُبْحَانَ اللَّهِ",
-                transliteration = active?.transliteration ?: "SubhanAllah",
-                targetCount = _targetCount.value,
-                todayTotal = todayTotal.value,
-                streakDays = streakInfo.value.currentStreak,
-                isNightMode = _isNightMode.value
-            )
-            if (ok) {
-                val status = wearSyncManager.getConnectionStatus()
-                _wearConnectionStatus.value = status.copy(lastSyncTimeMillis = System.currentTimeMillis())
-            }
-        }
     }
 
     fun addCustomDhikr(

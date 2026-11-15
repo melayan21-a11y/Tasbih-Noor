@@ -65,9 +65,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.ui.components.BeadDesign
 import com.example.ui.components.BeadMaterial
 import com.example.ui.components.BeadTension
 import com.example.ui.components.DraggablePrayerBeads
+import com.example.ui.theme.AppThemeStyle
 import com.example.ui.theme.ArabicCalligraphyFontFamily
 import com.example.ui.theme.DayEmeraldDeep
 import com.example.ui.theme.DayGoldAccent
@@ -76,6 +78,7 @@ import com.example.ui.theme.EmeraldDeep
 import com.example.ui.theme.EmeraldPrimary
 import com.example.ui.theme.GoldLight
 import com.example.ui.theme.GoldPrimary
+import com.example.ui.theme.LocalTasbihPalette
 import com.example.data.model.AthkarType
 import com.example.ui.theme.NightBackground
 import com.example.ui.viewmodel.SalahSetStage
@@ -163,8 +166,10 @@ fun TasbihMainScreen(
         SalahSetStage.TAHLIL_SEAL -> 99 + currentCount
     }
 
+    val palette = LocalTasbihPalette.current
     val isNightMode by viewModel.isNightMode.collectAsState()
     val beadMaterial by viewModel.beadMaterial.collectAsState()
+    val beadDesign by viewModel.beadDesign.collectAsState()
     val beadTension by viewModel.beadTension.collectAsState()
     val singleBeadLock by viewModel.singleBeadLock.collectAsState()
     val isAutoGuiding by viewModel.isAutoGuiding.collectAsState()
@@ -172,50 +177,40 @@ fun TasbihMainScreen(
     val currentHour = remember { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
     val dayPhase = remember(currentHour) { SpiritualDayPhase.fromHour(currentHour) }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        // Night Recitation Mode background or Time-Attuned Radiant Day Noor Islamic background
-        if (isNightMode) {
-            Image(
-                painter = painterResource(id = R.drawable.bg_islamic_night),
-                contentDescription = "Night ambient background",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            // Soft time-aware nocturnal overlay
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                dayPhase.nightTint.copy(alpha = 0.60f),
-                                Color.Black.copy(alpha = 0.56f)
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(palette.background)
+    ) {
+        // Sanctuary Theme Artwork Background harmonized with time of day
+        Image(
+            painter = painterResource(id = palette.backgroundRes),
+            contentDescription = "${palette.title} sanctuary background",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            alpha = palette.backgroundArtAlpha
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = if (palette.isDark) {
+                            listOf(
+                                palette.background.copy(alpha = 0.68f),
+                                palette.background.copy(alpha = 0.34f),
+                                palette.background.copy(alpha = 0.62f)
                             )
-                        )
-                    )
-            )
-        } else {
-            // Luminous Day Noor ambient artwork & time-of-day warm ivory/golden gradient
-            Image(
-                painter = painterResource(id = R.drawable.bg_islamic_day),
-                contentDescription = "Day ambient background",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                dayPhase.dayOverlayTop.copy(alpha = 0.72f),
-                                Color(0xFFF7F2E6).copy(alpha = 0.60f),
-                                dayPhase.dayOverlayBottom.copy(alpha = 0.78f)
+                        } else {
+                            listOf(
+                                palette.background.copy(alpha = 0.72f),
+                                dayPhase.dayOverlayTop.copy(alpha = 0.36f),
+                                palette.surfaceVariant.copy(alpha = 0.68f)
                             )
-                        )
+                        }
                     )
-            )
-        }
+                )
+        )
 
         Column(
             modifier = Modifier
@@ -223,7 +218,7 @@ fun TasbihMainScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header Bar: Night Mode Toggle & Today's Total
+            // Header Bar: Sanctuary Mode Toggle & Today's Total
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -234,10 +229,10 @@ fun TasbihMainScreen(
                 // Today's count pill
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = if (isNightMode) Color(0xFF0F352C).copy(alpha = 0.85f) else Color(0xFFFFFDF8).copy(alpha = 0.95f),
+                    color = palette.surface.copy(alpha = 0.90f),
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        if (isNightMode) GoldPrimary.copy(alpha = 0.4f) else Color(0xFFDFCC9D)
+                        palette.cardBorder
                     ),
                     modifier = Modifier.testTag("today_count_badge")
                 ) {
@@ -248,7 +243,7 @@ fun TasbihMainScreen(
                         Text(
                             text = "Today:",
                             fontSize = 12.sp,
-                            color = if (isNightMode) GoldLight else Color(0xFF7A6538),
+                            color = palette.textSecondary,
                             fontWeight = FontWeight.Medium
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -256,36 +251,38 @@ fun TasbihMainScreen(
                             text = "$todayTotal",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isNightMode) GoldLight else DayEmeraldDeep
+                            color = if (isNightMode) palette.accentLight else palette.textPrimary
                         )
                     }
                 }
 
-                // Recitation Mode button: Day Noor ☀️ vs Night Noor ✨
+                // Quick Sanctuary Day/Night Switcher displaying current sanctuary theme
                 FilledTonalButton(
                     onClick = { viewModel.setNightMode(!isNightMode) },
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = if (isNightMode) GoldPrimary else Color(0xFFFFFDF8).copy(alpha = 0.95f),
-                        contentColor = if (isNightMode) NightBackground else DayEmeraldDeep
+                        containerColor = if (isNightMode) palette.accent else palette.surface.copy(alpha = 0.95f),
+                        contentColor = if (isNightMode) palette.onPrimaryColor else palette.textPrimary
                     ),
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        if (isNightMode) Color.Transparent else Color(0xFFDFCC9D)
+                        if (isNightMode) Color.Transparent else palette.cardBorder
                     ),
                     modifier = Modifier.testTag("night_mode_toggle")
                 ) {
                     Icon(
                         imageVector = if (isNightMode) Icons.Default.Bedtime else Icons.Default.LightMode,
                         contentDescription = "Toggle Night Mode",
-                        modifier = Modifier.size(18.dp),
-                        tint = if (isNightMode) NightBackground else DayGoldAccent
+                        modifier = Modifier.size(16.dp),
+                        tint = if (isNightMode) palette.onPrimaryColor else palette.accentLight
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (isNightMode) "Night Noor ✨" else "Day Noor ☀️",
-                        fontSize = 12.sp,
+                        text = palette.title,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isNightMode) NightBackground else DayEmeraldDeep
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (isNightMode) palette.onPrimaryColor else palette.textPrimary
                     )
                 }
             }
@@ -300,10 +297,10 @@ fun TasbihMainScreen(
                 // 1. Time-Aware Daily Adhkar Shortcut Pill
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = if (isNightMode) Color(0xFF0F362C).copy(alpha = 0.88f) else Color(0xFFFFFBF2).copy(alpha = 0.96f),
+                    color = palette.surface.copy(alpha = 0.90f),
                     border = androidx.compose.foundation.BorderStroke(
                         1.2.dp,
-                        if (isNightMode) GoldPrimary.copy(alpha = 0.55f) else DayGoldAccent.copy(alpha = 0.55f)
+                        palette.accent.copy(alpha = 0.45f)
                     ),
                     modifier = Modifier
                         .weight(1f)
@@ -325,21 +322,21 @@ fun TasbihMainScreen(
                                 text = dayPhase.athkarLabel,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isNightMode) GoldLight else DayEmeraldDeep,
+                                color = if (isNightMode) palette.accentLight else palette.textPrimary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = if (isNightMode) GoldPrimary.copy(alpha = 0.22f) else DayGoldAccent.copy(alpha = 0.14f),
+                            color = palette.accent.copy(alpha = if (isNightMode) 0.22f else 0.14f),
                             modifier = Modifier.padding(start = 4.dp)
                         ) {
                             Text(
                                 text = "Now ➔",
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isNightMode) GoldLight else DayGoldAccent,
+                                color = if (isNightMode) palette.accentLight else palette.accent,
                                 modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
                             )
                         }
@@ -350,13 +347,13 @@ fun TasbihMainScreen(
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = if (isSalahSetMode) {
-                        if (isNightMode) GoldPrimary else DayEmeraldDeep
+                        palette.accent
                     } else {
-                        if (isNightMode) Color(0xFF133F34).copy(alpha = 0.85f) else Color(0xFFF7F2E4).copy(alpha = 0.95f)
+                        palette.surfaceVariant.copy(alpha = 0.88f)
                     },
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        if (isNightMode) GoldPrimary.copy(alpha = 0.4f) else Color(0xFFDFCC9D)
+                        if (isSalahSetMode) palette.accentLight else palette.cardBorder
                     ),
                     modifier = Modifier
                         .weight(1f)
@@ -385,9 +382,9 @@ fun TasbihMainScreen(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isSalahSetMode) {
-                                    if (isNightMode) NightBackground else Color.White
+                                    palette.onPrimaryColor
                                 } else {
-                                    if (isNightMode) GoldLight else DayEmeraldDeep
+                                    if (isNightMode) palette.accentLight else palette.textPrimary
                                 },
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -398,8 +395,8 @@ fun TasbihMainScreen(
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (isSalahSetMode) {
-                                if (isNightMode) NightBackground else Color.White
-                            } else DayGoldAccent,
+                                palette.onPrimaryColor
+                            } else palette.accent,
                             modifier = Modifier.padding(start = 2.dp)
                         )
                     }
@@ -421,10 +418,8 @@ fun TasbihMainScreen(
                             onDragStart = { dhikrSwipeAccumulator = 0f },
                             onDragEnd = {
                                 if (dhikrSwipeAccumulator < -40f) {
-                                    // Swipe left -> Next Dhikr
                                     viewModel.selectNextDhikr()
                                 } else if (dhikrSwipeAccumulator > 40f) {
-                                    // Swipe right -> Previous Dhikr
                                     viewModel.selectPreviousDhikr()
                                 }
                                 dhikrSwipeAccumulator = 0f
@@ -440,12 +435,12 @@ fun TasbihMainScreen(
                     .testTag("current_dhikr_card"),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isNightMode) Color(0xFF0C2B24).copy(alpha = 0.88f) else Color(0xFFFFFDF8).copy(alpha = 0.96f)
+                    containerColor = palette.surface.copy(alpha = 0.90f)
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
                 border = androidx.compose.foundation.BorderStroke(
                     1.2.dp,
-                    if (isNightMode) GoldPrimary.copy(alpha = 0.35f) else Color(0xFFDFCC9D)
+                    palette.cardBorder
                 )
             ) {
                 Column(
@@ -462,17 +457,13 @@ fun TasbihMainScreen(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = if (isSalahSetMode) {
-                                if (isNightMode) GoldPrimary.copy(alpha = 0.25f) else Color(0xFFF9EED4)
-                            } else {
-                                if (isNightMode) GoldPrimary.copy(alpha = 0.2f) else Color(0xFFF2E9D6)
-                            }
+                            color = palette.primaryContainer.copy(alpha = if (isNightMode) 0.72f else 0.75f)
                         ) {
                             Text(
                                 text = if (isSalahSetMode) "🕌 After Salah Set • Step ${salahSetStage.stepIndex}/4" else (currentDhikr?.category ?: "Daily"),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isNightMode) GoldLight else DayEmeraldDeep,
+                                color = if (isNightMode) palette.accentLight else palette.textPrimary,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                             )
                         }
@@ -480,14 +471,14 @@ fun TasbihMainScreen(
                         if (isSalahSetMode) {
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = if (isNightMode) Color(0xFF1E3830) else Color(0xFFFDE8E8),
+                                color = if (isNightMode) Color(0xFF421C1C) else Color(0xFFFDE8E8),
                                 modifier = Modifier.clickable { viewModel.exitSalahSetMode() }
                             ) {
                                 Text(
                                     text = "Exit Set ✕",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFFC62828),
+                                    color = if (isNightMode) Color(0xFFFFB4B4) else Color(0xFFC62828),
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
                             }
@@ -496,7 +487,7 @@ fun TasbihMainScreen(
                                 text = "Swipe ◂ ▸ or tap arrows",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (isNightMode) GoldPrimary else DayGoldAccent
+                                color = if (isNightMode) palette.accent else palette.accentLight
                             )
                         }
                     }
@@ -518,7 +509,7 @@ fun TasbihMainScreen(
                                 Icon(
                                     imageVector = Icons.Default.ChevronLeft,
                                     contentDescription = "Previous Dhikr",
-                                    tint = if (isNightMode) GoldPrimary.copy(alpha = 0.85f) else DayGoldAccent,
+                                    tint = palette.accent.copy(alpha = 0.9f),
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -536,7 +527,7 @@ fun TasbihMainScreen(
                                 fontFamily = ArabicCalligraphyFontFamily,
                                 fontSize = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 22.sp else 29.sp,
                                 fontWeight = FontWeight.Normal,
-                                color = if (isNightMode) GoldLight else DayEmeraldDeep,
+                                color = if (isNightMode) palette.accentLight else palette.textPrimary,
                                 textAlign = TextAlign.Center,
                                 lineHeight = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 36.sp else 45.sp
                             )
@@ -548,7 +539,7 @@ fun TasbihMainScreen(
                                 text = if (isSalahSetMode) salahSetStage.transliteration else (currentDhikr?.transliteration ?: "SubhanAllah"),
                                 fontSize = if (isSalahSetMode && salahSetStage == SalahSetStage.TAHLIL_SEAL) 13.sp else 15.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.9f) else Color(0xFF8C6418),
+                                color = if (isNightMode) palette.textPrimary else palette.accent,
                                 textAlign = TextAlign.Center,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
@@ -558,7 +549,7 @@ fun TasbihMainScreen(
                             Text(
                                 text = if (isSalahSetMode) salahSetStage.translation else (currentDhikr?.englishTranslation ?: "Glory be to Allah"),
                                 fontSize = 12.sp,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color(0xFF4C6B61),
+                                color = palette.textSecondary,
                                 textAlign = TextAlign.Center,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -575,7 +566,7 @@ fun TasbihMainScreen(
                                 Icon(
                                     imageVector = Icons.Default.ChevronRight,
                                     contentDescription = "Next Dhikr",
-                                    tint = if (isNightMode) GoldPrimary.copy(alpha = 0.85f) else DayGoldAccent,
+                                    tint = palette.accent.copy(alpha = 0.9f),
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -599,19 +590,19 @@ fun TasbihMainScreen(
                         SalahSetStage.ALHAMDULILLAH to "2. Alhamdulillah (33)",
                         SalahSetStage.ALLAHU_AKBAR to "3. Allahu Akbar (33)",
                         SalahSetStage.TAHLIL_SEAL to "4. Seal (1)"
-                    ).forEach { (stage, label) ->
+                    ).forEach { (stage, _) ->
                         val isCurrent = salahSetStage == stage
                         val isPast = salahSetStage.stepIndex > stage.stepIndex
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = when {
-                                isCurrent -> if (isNightMode) GoldPrimary else EmeraldPrimary
-                                isPast -> if (isNightMode) Color(0xFF133F34) else Color(0xFFE8F5E9)
-                                else -> if (isNightMode) Color(0xFF0C241D) else Color(0xFFF1F5F3)
+                                isCurrent -> palette.accent
+                                isPast -> palette.primaryContainer
+                                else -> palette.surface.copy(alpha = 0.8f)
                             },
                             border = androidx.compose.foundation.BorderStroke(
                                 1.dp,
-                                if (isCurrent) GoldLight else if (isPast) (if (isNightMode) Color(0xFF1E5244) else Color(0xFFA5D6A7)) else Color.Transparent
+                                if (isCurrent) palette.accentLight else if (isPast) palette.cardBorder else Color.Transparent
                             ),
                             modifier = Modifier.weight(1f)
                         ) {
@@ -620,9 +611,9 @@ fun TasbihMainScreen(
                                 fontSize = 11.sp,
                                 fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
                                 color = when {
-                                    isCurrent -> if (isNightMode) NightBackground else Color.White
-                                    isPast -> if (isNightMode) GoldLight else EmeraldDeep
-                                    else -> if (isNightMode) Color.White.copy(alpha = 0.5f) else Color.Gray
+                                    isCurrent -> palette.onPrimaryColor
+                                    isPast -> if (isNightMode) palette.accentLight else palette.textPrimary
+                                    else -> palette.textSecondary.copy(alpha = 0.7f)
                                 },
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(vertical = 5.dp)
@@ -645,13 +636,13 @@ fun TasbihMainScreen(
                         Surface(
                             shape = RoundedCornerShape(14.dp),
                             color = if (isSelected) {
-                                if (isNightMode) GoldPrimary else EmeraldPrimary
+                                palette.accent
                             } else {
-                                if (isNightMode) Color(0xFF10332B).copy(alpha = 0.6f) else Color.White.copy(alpha = 0.7f)
+                                palette.surface.copy(alpha = 0.78f)
                             },
                             border = androidx.compose.foundation.BorderStroke(
                                 1.dp,
-                                if (isSelected) GoldLight else Color.Transparent
+                                if (isSelected) palette.accentLight else palette.cardBorder.copy(alpha = 0.65f)
                             ),
                             modifier = Modifier
                                 .padding(horizontal = 4.dp)
@@ -661,12 +652,8 @@ fun TasbihMainScreen(
                             Text(
                                 text = label,
                                 fontSize = 12.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) {
-                                    if (isNightMode) NightBackground else Color.White
-                                } else {
-                                    if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.DarkGray
-                                },
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) palette.onPrimaryColor else palette.textPrimary.copy(alpha = 0.85f),
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                             )
                         }
@@ -679,12 +666,12 @@ fun TasbihMainScreen(
                 onClick = { viewModel.onBeadPulled() },
                 shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isNightMode) Color(0xFF07211B).copy(alpha = 0.90f) else Color(0xFFFFFDF8).copy(alpha = 0.96f)
+                    containerColor = palette.surface.copy(alpha = 0.92f)
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 border = androidx.compose.foundation.BorderStroke(
                     1.5.dp,
-                    if (isNightMode) GoldPrimary else Color(0xFFDFCC9D)
+                    if (isNightMode) palette.accent else palette.cardBorder
                 ),
                 modifier = Modifier
                     .padding(vertical = 4.dp)
@@ -699,7 +686,7 @@ fun TasbihMainScreen(
                         text = "$currentCount",
                         fontSize = 42.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isNightMode) GoldLight else EmeraldDeep
+                        color = if (isNightMode) palette.accentLight else palette.textPrimary
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
@@ -707,28 +694,28 @@ fun TasbihMainScreen(
                             text = if (isSalahSetMode) "/ ${salahSetStage.target}" else (if (targetCount > 0) "/ $targetCount" else "Target: ∞"),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.Gray
+                            color = palette.textSecondary
                         )
                         if (isSalahSetMode) {
                             Text(
                                 text = "Set: $setCumulativeCount/100",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = GoldPrimary
+                                color = palette.accent
                             )
                         } else if (lapsCompleted > 0) {
                             Text(
                                 text = "Laps: $lapsCompleted",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isNightMode) GoldPrimary else EmeraldPrimary
+                                color = palette.accent
                             )
                         }
                     }
                 }
             }
 
-            // Hero Draggable Prayer Beads Strand (Big beads sliding horizontally across screen)
+            // Hero Draggable Prayer Beads Strand
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -739,9 +726,13 @@ fun TasbihMainScreen(
                     currentCount = currentCount,
                     targetCount = targetCount,
                     material = beadMaterial,
+                    design = beadDesign,
                     tension = beadTension,
                     singleBeadLock = singleBeadLock,
                     isNightMode = isNightMode,
+                    cordColor = palette.cordColor,
+                    themeAccent = palette.accent,
+                    themeAccentLight = palette.accentLight,
                     onBeadPulled = { viewModel.onBeadPulled() },
                     modifier = Modifier
                         .fillMaxSize()
@@ -749,7 +740,7 @@ fun TasbihMainScreen(
                 )
             }
 
-            // Quick String Tension & 1-Bead Lock Bar (stops scrolling 3-5 beads by accident)
+            // Quick String Tension & 1-Bead Lock Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -761,13 +752,13 @@ fun TasbihMainScreen(
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = if (singleBeadLock) {
-                        if (isNightMode) GoldPrimary.copy(alpha = 0.25f) else EmeraldPrimary.copy(alpha = 0.12f)
+                        palette.accent.copy(alpha = if (isNightMode) 0.22f else 0.14f)
                     } else {
-                        if (isNightMode) Color(0xFF103328) else Color(0xFFE8ECE9)
+                        palette.surfaceVariant.copy(alpha = 0.85f)
                     },
                     border = androidx.compose.foundation.BorderStroke(
                         1.dp,
-                        if (singleBeadLock) (if (isNightMode) GoldPrimary else EmeraldPrimary) else Color.Transparent
+                        if (singleBeadLock) palette.accent else palette.cardBorder.copy(alpha = 0.5f)
                     ),
                     modifier = Modifier
                         .clickable { viewModel.setSingleBeadLock(!singleBeadLock) }
@@ -778,9 +769,9 @@ fun TasbihMainScreen(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (singleBeadLock) {
-                            if (isNightMode) GoldLight else EmeraldPrimary
+                            if (isNightMode) palette.accentLight else palette.accent
                         } else {
-                            if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray
+                            palette.textSecondary
                         },
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
@@ -796,11 +787,7 @@ fun TasbihMainScreen(
                         val isSelected = beadTension == t
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = if (isSelected) {
-                                if (isNightMode) GoldPrimary else EmeraldPrimary
-                            } else {
-                                if (isNightMode) Color(0xFF10332B) else Color(0xFFF1F5F3)
-                            },
+                            color = if (isSelected) palette.accent else palette.surfaceVariant.copy(alpha = 0.85f),
                             modifier = Modifier
                                 .clickable { viewModel.setBeadTension(t) }
                                 .testTag("tension_${label.lowercase()}")
@@ -809,11 +796,7 @@ fun TasbihMainScreen(
                                 text = label,
                                 fontSize = 11.sp,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) {
-                                    if (isNightMode) Color(0xFF071914) else Color.White
-                                } else {
-                                    if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.DarkGray
-                                },
+                                color = if (isSelected) palette.onPrimaryColor else palette.textSecondary,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -827,11 +810,11 @@ fun TasbihMainScreen(
             Card(
                 shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isNightMode) Color(0xFF0F352C).copy(alpha = 0.9f) else Color.White.copy(alpha = 0.95f)
+                    containerColor = palette.surface.copy(alpha = 0.92f)
                 ),
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp,
-                    if (isNightMode) GoldPrimary.copy(alpha = 0.3f) else Color(0xFFD4E3DB)
+                    palette.cardBorder
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -852,7 +835,7 @@ fun TasbihMainScreen(
                         Icon(
                             imageVector = Icons.Default.Undo,
                             contentDescription = "Undo last bead",
-                            tint = if (isNightMode) GoldLight else Color.DarkGray
+                            tint = if (isNightMode) palette.accentLight else palette.textPrimary
                         )
                     }
 
@@ -864,20 +847,16 @@ fun TasbihMainScreen(
                         Icon(
                             imageVector = Icons.Default.VolumeUp,
                             contentDescription = "Listen to pronunciation",
-                            tint = if (isNightMode) GoldPrimary else EmeraldPrimary
+                            tint = palette.accent
                         )
                     }
 
-                    // Auto-Guide Pacing Mode (Guides recitations at continuous calming cadence)
+                    // Auto-Guide Pacing Mode
                     FilledTonalButton(
                         onClick = { viewModel.toggleAutoGuide() },
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (isAutoGuiding) {
-                                Color(0xFFC0392B)
-                            } else {
-                                if (isNightMode) GoldPrimary else EmeraldPrimary
-                            },
-                            contentColor = Color.White
+                            containerColor = if (isAutoGuiding) Color(0xFFC0392B) else palette.accent,
+                            contentColor = if (isAutoGuiding) Color.White else palette.onPrimaryColor
                         ),
                         modifier = Modifier.testTag("auto_guide_toggle")
                     ) {
@@ -902,7 +881,7 @@ fun TasbihMainScreen(
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Reset counter",
-                            tint = if (isNightMode) GoldLight else Color.DarkGray
+                            tint = if (isNightMode) palette.accentLight else palette.textPrimary
                         )
                     }
                 }

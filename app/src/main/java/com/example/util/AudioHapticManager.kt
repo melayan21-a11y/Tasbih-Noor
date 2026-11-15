@@ -5,6 +5,7 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.media.SoundPool
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -12,11 +13,20 @@ import android.os.VibratorManager
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.sin
 import kotlin.random.Random
@@ -87,7 +97,14 @@ class AudioHapticManager(private val context: Context) {
     private val _voiceState = MutableStateFlow(VoiceEngineState())
     val voiceState: StateFlow<VoiceEngineState> = _voiceState.asStateFlow()
 
-    // Multiple subtle organic variations per material so repeating 33/99 clicks stays alive & non-robotic
+    private val audioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // Preloaded SoundPool using USAGE_MEDIA so bead taps play reliably with zero cold-start clipping
+    private var soundPool: SoundPool? = null
+    private val loadedSoundIds = ConcurrentHashMap<Int, Boolean>()
+    private val soundBanks = ConcurrentHashMap<SoundEffectType, List<Int>>()
+
+    // PCM bank retained as immediate fallback while SoundPool finishes initial load
     private var woodVariations: List<ByteArray> = emptyList()
     private var crystalVariations: List<ByteArray> = emptyList()
     private var chimeVariations: List<ByteArray> = emptyList()
@@ -97,7 +114,7 @@ class AudioHapticManager(private val context: Context) {
 
     init {
         initTts()
-        generatePcmSounds()
+        initSoundEffects()
     }
 
     private fun initTts() {
@@ -315,71 +332,122 @@ class AudioHapticManager(private val context: Context) {
         }
     }
 
-    private fun generatePcmSounds() {
+    private fun initSoundEffects() {
+        try {
+            val attrs = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+
+            soundPool = SoundPool.Builder()
+                .setMaxStreams(8)
+                .setAudioAttributes(attrs)
+                .build().apply {
+                    setOnLoadCompleteListener { _, sampleId, status ->
+                        if (status == 0) {
+                            loadedSoundIds[sampleId] = true
+                        }
+                    }
+                }
+        } catch (t: Throwable) {
+            Log.e("AudioHapticManager", "SoundPool init error", t)
+        }
+
+        audioScope.launch {
+            generateAndLoadSounds()
+        }
+    }
+
+    private fun generateAndLoadSounds() {
         try {
             val offsets = listOf(0.975, 1.0, 1.028)
-            // Madinah Olive Wood: dry wooden knock transient + 3 warm woody body resonances
+            // Madinah Olive Wood: crisp resonant wooden knock that speaks cleanly on phone micro-speakers
             woodVariations = offsets.mapIndexed { idx, pitch ->
                 synthesizeMultiModalBead(
-                    f1 = 760.0 * pitch,
-                    f2 = 1390.0 * pitch,
-                    f3 = 2380.0 * pitch,
-                    decay1 = 92.0,
-                    decay2 = 145.0,
-                    decay3 = 230.0,
-                    transientStrength = 0.28,
-                    durationMs = 42,
+                    f1 = 680.0 * pitch,
+                    f2 = 1260.0 * pitch,
+                    f3 = 2120.0 * pitch,
+                    decay1 = 36.0,
+                    decay2 = 62.0,
+                    decay3 = 110.0,
+                    transientStrength = 0.34,
+                    durationMs = 85,
                     seed = 101 + idx
                 )
             }
-            // Crystal Agate: crisp glassy strike + luminous high crystalline overtones
+            // Crystal Agate: bright glassy strike + clear crystalline overtones
             crystalVariations = offsets.mapIndexed { idx, pitch ->
                 synthesizeMultiModalBead(
-                    f1 = 1980.0 * pitch,
-                    f2 = 3420.0 * pitch,
-                    f3 = 5180.0 * pitch,
-                    decay1 = 58.0,
-                    decay2 = 95.0,
-                    decay3 = 160.0,
-                    transientStrength = 0.22,
-                    durationMs = 54,
+                    f1 = 1680.0 * pitch,
+                    f2 = 2890.0 * pitch,
+                    f3 = 4320.0 * pitch,
+                    decay1 = 28.0,
+                    decay2 = 46.0,
+                    decay3 = 82.0,
+                    transientStrength = 0.25,
+                    durationMs = 110,
                     seed = 201 + idx
                 )
             }
             // Brass Sanctuary Chime: warm harmonic singing-bell sustain
             chimeVariations = offsets.mapIndexed { idx, pitch ->
                 synthesizeMultiModalBead(
-                    f1 = 1046.5 * pitch,
-                    f2 = 2093.0 * pitch,
-                    f3 = 3136.0 * pitch,
-                    decay1 = 26.0,
-                    decay2 = 42.0,
-                    decay3 = 68.0,
-                    transientStrength = 0.08,
-                    durationMs = 110,
+                    f1 = 880.0 * pitch,
+                    f2 = 1760.0 * pitch,
+                    f3 = 2640.0 * pitch,
+                    decay1 = 14.0,
+                    decay2 = 24.0,
+                    decay3 = 42.0,
+                    transientStrength = 0.12,
+                    durationMs = 180,
                     seed = 301 + idx
                 )
             }
-            // Pearl Silk Tap: soft warm nacre click with gentle muted low-mid resonance
+            // Pearl Silk Tap: warm soft nacre tap with audible body
             pearlVariations = offsets.mapIndexed { idx, pitch ->
                 synthesizeMultiModalBead(
-                    f1 = 620.0 * pitch,
-                    f2 = 1140.0 * pitch,
-                    f3 = 1780.0 * pitch,
-                    decay1 = 120.0,
-                    decay2 = 190.0,
-                    decay3 = 290.0,
-                    transientStrength = 0.18,
-                    durationMs = 34,
+                    f1 = 540.0 * pitch,
+                    f2 = 980.0 * pitch,
+                    f3 = 1560.0 * pitch,
+                    decay1 = 42.0,
+                    decay2 = 72.0,
+                    decay3 = 120.0,
+                    transientStrength = 0.24,
+                    durationMs = 75,
                     seed = 401 + idx
                 )
             }
-        } catch (e: Exception) {
-            Log.e("AudioHapticManager", "Error generating PCM sounds", e)
+
+            val pool = soundPool ?: return
+            val sfxDir = File(context.cacheDir, "tasbih_bead_sfx").apply { mkdirs() }
+            val banks = mapOf(
+                SoundEffectType.WOOD_CLICK to woodVariations,
+                SoundEffectType.CRYSTAL_CLICK to crystalVariations,
+                SoundEffectType.SOFT_CHIME to chimeVariations,
+                SoundEffectType.PEARL_TAP to pearlVariations
+            )
+            banks.forEach { (type, variations) ->
+                val ids = mutableListOf<Int>()
+                variations.forEachIndexed { idx, pcm ->
+                    try {
+                        val wavFile = File(sfxDir, "${type.name.lowercase()}_v$idx.wav")
+                        writePcmAsWav(wavFile, pcm)
+                        val id = pool.load(wavFile.absolutePath, 1)
+                        if (id > 0) ids.add(id)
+                    } catch (t: Throwable) {
+                        Log.e("AudioHapticManager", "Failed loading WAV for $type", t)
+                    }
+                }
+                if (ids.isNotEmpty()) {
+                    soundBanks[type] = ids
+                }
+            }
+        } catch (e: Throwable) {
+            Log.e("AudioHapticManager", "Error generating bead sounds", e)
         }
     }
 
-    private fun synthesizeMultiModalBead(
+    internal fun synthesizeMultiModalBead(
         f1: Double,
         f2: Double,
         f3: Double,
@@ -390,46 +458,124 @@ class AudioHapticManager(private val context: Context) {
         durationMs: Int,
         seed: Int
     ): ByteArray {
-        val signalSamples = (sampleRate * durationMs / 1000.0).toInt().coerceAtLeast(64)
-        val minBytes = try {
-            AudioTrack.getMinBufferSize(
-                sampleRate,
-                AudioFormat.CHANNEL_OUT_MONO,
-                AudioFormat.ENCODING_PCM_16BIT
-            ).coerceAtLeast(0)
-        } catch (_: Throwable) {
-            0
-        }
-        val totalBytes = maxOf(signalSamples * 2, minBytes).let { if (it % 2 == 0) it else it + 1 }
-        val pcmData = ByteArray(totalBytes)
+        val signalSamples = (sampleRate * durationMs / 1000.0).toInt().coerceAtLeast(128)
+        val raw = DoubleArray(signalSamples)
         val rng = Random(seed)
+        var maxPeak = 1e-6
 
         for (i in 0 until signalSamples) {
             val t = i.toDouble() / sampleRate
-            // Smooth 0.4ms attack ramp avoids digital DC click
-            val attack = if (t < 0.0004) t / 0.0004 else 1.0
+            // Smooth 0.5ms attack + smooth last 6ms tail fade avoids digital click
+            val attack = if (t < 0.0005) t / 0.0005 else 1.0
+            val tailSamples = (sampleRate * 0.006).toInt().coerceAtLeast(1)
+            val tailEnv = if (i >= signalSamples - tailSamples) {
+                (signalSamples - 1 - i).toDouble() / tailSamples
+            } else {
+                1.0
+            }
 
-            // Coupled modal body resonances (higher modes decay naturally faster)
+            // Coupled modal body resonances
             val body = (
                 0.56 * sin(2.0 * PI * f1 * t) * exp(-decay1 * t) +
                 0.30 * sin(2.0 * PI * f2 * t) * exp(-decay2 * t) +
                 0.14 * sin(2.0 * PI * f3 * t) * exp(-decay3 * t)
             )
 
-            // Short percussive contact burst in first ~3ms for physical material texture
-            val transientEnv = exp(-1100.0 * t)
+            // Short percussive contact burst in first ~4ms for physical material texture
+            val transientEnv = exp(-750.0 * t)
             val transient = (rng.nextDouble() * 2.0 - 1.0) * transientStrength * transientEnv
 
-            val sampleVal = ((body + transient) * attack).coerceIn(-1.0, 1.0)
-            val sampleShort = (sampleVal * 32767).toInt().toShort()
+            val sampleVal = (body + transient) * attack * tailEnv
+            raw[i] = sampleVal
+            val absVal = abs(sampleVal)
+            if (absVal > maxPeak) maxPeak = absVal
+        }
+
+        // Peak-normalize to 0.94 so clicks are crisp and audible on every device speaker
+        val normGain = 0.94 / maxPeak
+        val pcmData = ByteArray(signalSamples * 2)
+        for (i in 0 until signalSamples) {
+            val normalized = (raw[i] * normGain).coerceIn(-1.0, 1.0)
+            val sampleShort = (normalized * 32767.0).toInt().toShort()
             pcmData[i * 2] = (sampleShort.toInt() and 0xFF).toByte()
             pcmData[i * 2 + 1] = ((sampleShort.toInt() shr 8) and 0xFF).toByte()
         }
         return pcmData
     }
 
+    internal fun buildWavBytes(pcmData: ByteArray): ByteArray {
+        val totalAudioLen = pcmData.size
+        val totalDataLen = totalAudioLen + 36
+        val byteRate = sampleRate * 2 // 16-bit mono
+        val header = ByteArray(44)
+        header[0] = 'R'.code.toByte()
+        header[1] = 'I'.code.toByte()
+        header[2] = 'F'.code.toByte()
+        header[3] = 'F'.code.toByte()
+        header[4] = (totalDataLen and 0xFF).toByte()
+        header[5] = ((totalDataLen shr 8) and 0xFF).toByte()
+        header[6] = ((totalDataLen shr 16) and 0xFF).toByte()
+        header[7] = ((totalDataLen shr 24) and 0xFF).toByte()
+        header[8] = 'W'.code.toByte()
+        header[9] = 'A'.code.toByte()
+        header[10] = 'V'.code.toByte()
+        header[11] = 'E'.code.toByte()
+        header[12] = 'f'.code.toByte()
+        header[13] = 'm'.code.toByte()
+        header[14] = 't'.code.toByte()
+        header[15] = ' '.code.toByte()
+        header[16] = 16 // PCM subchunk size
+        header[20] = 1 // PCM format
+        header[22] = 1 // Mono
+        header[24] = (sampleRate and 0xFF).toByte()
+        header[25] = ((sampleRate shr 8) and 0xFF).toByte()
+        header[26] = ((sampleRate shr 16) and 0xFF).toByte()
+        header[27] = ((sampleRate shr 24) and 0xFF).toByte()
+        header[28] = (byteRate and 0xFF).toByte()
+        header[29] = ((byteRate shr 8) and 0xFF).toByte()
+        header[30] = ((byteRate shr 16) and 0xFF).toByte()
+        header[31] = ((byteRate shr 24) and 0xFF).toByte()
+        header[32] = 2 // Block align
+        header[34] = 16 // Bits per sample
+        header[36] = 'd'.code.toByte()
+        header[37] = 'a'.code.toByte()
+        header[38] = 't'.code.toByte()
+        header[39] = 'a'.code.toByte()
+        header[40] = (totalAudioLen and 0xFF).toByte()
+        header[41] = ((totalAudioLen shr 8) and 0xFF).toByte()
+        header[42] = ((totalAudioLen shr 16) and 0xFF).toByte()
+        header[43] = ((totalAudioLen shr 24) and 0xFF).toByte()
+        return header + pcmData
+    }
+
+    private fun writePcmAsWav(file: File, pcmData: ByteArray) {
+        val wavBytes = buildWavBytes(pcmData)
+        FileOutputStream(file).use { out ->
+            out.write(wavBytes)
+        }
+    }
+
     fun playBeadSound(soundType: SoundEffectType) {
         if (soundType == SoundEffectType.MUTE) return
+        val cursor = variationCursor
+        variationCursor = (variationCursor + 1) % 300
+
+        // Primary path: preloaded hardware-mixed SoundPool on USAGE_MEDIA
+        val pool = soundPool
+        val ids = soundBanks[soundType]
+        if (pool != null && !ids.isNullOrEmpty()) {
+            val soundId = ids[cursor % ids.size]
+            if (loadedSoundIds[soundId] == true) {
+                try {
+                    val streamId = pool.play(soundId, 1.0f, 1.0f, 1, 0, 1.0f)
+                    if (streamId != 0) return
+                } catch (t: Throwable) {
+                    Log.e("AudioHapticManager", "SoundPool play failed", t)
+                }
+            }
+        }
+
+        // Immediate fallback path on background thread using USAGE_MEDIA MODE_STREAM
         val bank = when (soundType) {
             SoundEffectType.WOOD_CLICK -> woodVariations
             SoundEffectType.CRYSTAL_CLICK -> crystalVariations
@@ -438,13 +584,25 @@ class AudioHapticManager(private val context: Context) {
             SoundEffectType.MUTE -> emptyList()
         }
         if (bank.isEmpty()) return
-        val pcm = bank[variationCursor % bank.size]
+        val pcm = bank[cursor % bank.size]
         if (pcm.isEmpty()) return
-        variationCursor = (variationCursor + 1) % 300
 
+        audioScope.launch {
+            playPcmStreamFallback(pcm)
+        }
+    }
+
+    private fun playPcmStreamFallback(pcm: ByteArray) {
+        var track: AudioTrack? = null
         try {
+            val minBuf = AudioTrack.getMinBufferSize(
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+            ).coerceAtLeast(pcm.size)
+
             val audioAttributes = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build()
 
@@ -454,32 +612,28 @@ class AudioHapticManager(private val context: Context) {
                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                 .build()
 
-            val track = AudioTrack.Builder()
+            track = AudioTrack.Builder()
                 .setAudioAttributes(audioAttributes)
                 .setAudioFormat(audioFormat)
-                .setBufferSizeInBytes(pcm.size)
-                .setTransferMode(AudioTrack.MODE_STATIC)
+                .setBufferSizeInBytes(maxOf(minBuf, pcm.size))
+                .setTransferMode(AudioTrack.MODE_STREAM)
                 .build()
 
-            if (track.state != AudioTrack.STATE_INITIALIZED) {
-                try {
-                    track.release()
-                } catch (_: Throwable) {}
-                return
-            }
+            if (track.state != AudioTrack.STATE_INITIALIZED) return
 
-            track.write(pcm, 0, pcm.size)
             track.play()
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                try {
-                    if (track.playState == AudioTrack.PLAYSTATE_PLAYING) {
-                        track.stop()
-                    }
-                    track.release()
-                } catch (_: Throwable) {}
-            }, 220)
+            track.write(pcm, 0, pcm.size)
+            val sleepMs = ((pcm.size / 2) * 1000L / sampleRate) + 40L
+            Thread.sleep(sleepMs)
         } catch (t: Throwable) {
-            Log.e("AudioHapticManager", "Failed to play sound", t)
+            Log.e("AudioHapticManager", "Fallback stream playback failed", t)
+        } finally {
+            try {
+                if (track?.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                    track.stop()
+                }
+                track?.release()
+            } catch (_: Throwable) {}
         }
     }
 
@@ -581,6 +735,16 @@ class AudioHapticManager(private val context: Context) {
     }
 
     fun destroy() {
+        try {
+            audioScope.cancel()
+        } catch (_: Throwable) {}
+        try {
+            soundPool?.release()
+        } catch (_: Throwable) {} finally {
+            soundPool = null
+            loadedSoundIds.clear()
+            soundBanks.clear()
+        }
         try {
             tts?.stop()
             tts?.shutdown()

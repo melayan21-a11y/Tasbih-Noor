@@ -76,12 +76,7 @@ import com.example.data.model.AthkarRepository
 import com.example.data.model.AthkarType
 import com.example.data.model.DhikrItem
 import com.example.ui.theme.ArabicCalligraphyFontFamily
-import com.example.ui.theme.DayEmeraldDeep
-import com.example.ui.theme.EmeraldDeep
-import com.example.ui.theme.EmeraldPrimary
-import com.example.ui.theme.GoldLight
-import com.example.ui.theme.GoldPrimary
-import com.example.ui.theme.NightBackground
+import com.example.ui.theme.LocalTasbihPalette
 import com.example.ui.viewmodel.TasbihViewModel
 
 @Composable
@@ -100,7 +95,9 @@ fun AthkarReaderScreen(
     var isCompletedSession by remember { mutableStateOf(false) }
     var swipeAccumulator by remember { mutableFloatStateOf(0f) }
 
-    val isNightMode by viewModel.isNightMode.collectAsState()
+    val palette = LocalTasbihPalette.current
+    val isNightMode = palette.isDark
+    val headingColor = if (isNightMode) palette.accentLight else palette.textPrimary
     val soundType by viewModel.soundType.collectAsState()
     val hapticIntensity by viewModel.hapticIntensity.collectAsState()
 
@@ -119,15 +116,14 @@ fun AthkarReaderScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(if (isNightMode) Color(0xFF071914) else Color(0xFFFAF7F0))
+            .background(palette.background)
     ) {
-        // Ambient background artwork for both Night Noor and Day Noor
         Image(
-            painter = painterResource(id = if (isNightMode) R.drawable.bg_islamic_night else R.drawable.bg_islamic_day),
+            painter = painterResource(id = palette.backgroundRes),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
-            alpha = if (isNightMode) 0.22f else 0.16f
+            alpha = if (isNightMode) 0.24f else 0.17f
         )
 
         Column(
@@ -150,25 +146,20 @@ fun AthkarReaderScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint = if (isNightMode) GoldLight else EmeraldDeep
+                        tint = headingColor
                     )
                 }
 
                 // Morning / Evening Selector Pill
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = if (isNightMode) Color(0xFF0C2B22) else Color(0xFFE8F1EC),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        if (isNightMode) GoldPrimary.copy(alpha = 0.35f) else Color(0xFFD0E0D6)
-                    )
+                    color = palette.surface.copy(alpha = 0.92f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, palette.cardBorder)
                 ) {
                     Row(modifier = Modifier.padding(3.dp)) {
                         Surface(
                             shape = RoundedCornerShape(16.dp),
-                            color = if (selectedType == AthkarType.MORNING) {
-                                if (isNightMode) GoldPrimary else EmeraldPrimary
-                            } else Color.Transparent,
+                            color = if (selectedType == AthkarType.MORNING) palette.accent else Color.Transparent,
                             modifier = Modifier.clickable {
                                 selectedType = AthkarType.MORNING
                                 currentIndex = 0
@@ -180,18 +171,14 @@ fun AthkarReaderScreen(
                                 text = "Morning",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (selectedType == AthkarType.MORNING) {
-                                    if (isNightMode) NightBackground else Color.White
-                                } else (if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.DarkGray),
+                                color = if (selectedType == AthkarType.MORNING) palette.onPrimaryColor else palette.textSecondary,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             )
                         }
 
                         Surface(
                             shape = RoundedCornerShape(16.dp),
-                            color = if (selectedType == AthkarType.EVENING) {
-                                if (isNightMode) GoldPrimary else EmeraldPrimary
-                            } else Color.Transparent,
+                            color = if (selectedType == AthkarType.EVENING) palette.accent else Color.Transparent,
                             modifier = Modifier.clickable {
                                 selectedType = AthkarType.EVENING
                                 currentIndex = 0
@@ -203,16 +190,13 @@ fun AthkarReaderScreen(
                                 text = "Evening",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (selectedType == AthkarType.EVENING) {
-                                    if (isNightMode) NightBackground else Color.White
-                                } else (if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.DarkGray),
+                                color = if (selectedType == AthkarType.EVENING) palette.onPrimaryColor else palette.textSecondary,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             )
                         }
                     }
                 }
 
-                // Voice audio recitation button
                 IconButton(
                     onClick = {
                         viewModel.audioHapticManager.speakRecitation(currentItem.arabicText, currentItem.transliteration)
@@ -222,12 +206,11 @@ fun AthkarReaderScreen(
                     Icon(
                         imageVector = Icons.Default.VolumeUp,
                         contentDescription = "Recite",
-                        tint = GoldPrimary
+                        tint = palette.accent
                     )
                 }
             }
 
-            // Progress across entire Athkar booklet
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -249,13 +232,13 @@ fun AthkarReaderScreen(
                     },
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isNightMode) GoldLight else EmeraldDeep
+                    color = headingColor
                 )
                 Text(
                     text = "${currentIndex + 1} of ${items.size}",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.Gray
+                    color = palette.textSecondary
                 )
             }
 
@@ -266,15 +249,14 @@ fun AthkarReaderScreen(
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp)),
-                color = if (isNightMode) GoldPrimary else EmeraldPrimary,
-                trackColor = if (isNightMode) Color(0xFF133F34) else Color(0xFFDEE9E2),
+                color = palette.accent,
+                trackColor = palette.surfaceVariant,
                 strokeCap = StrokeCap.Round
             )
 
             Spacer(modifier = Modifier.height(10.dp))
 
             if (isCompletedSession) {
-                // Completed Session Celebration Card
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -284,13 +266,8 @@ fun AthkarReaderScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isNightMode) Color(0xFF09241C) else Color.White
-                        ),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.5.dp,
-                            if (isNightMode) GoldPrimary else EmeraldPrimary
-                        )
+                        colors = CardDefaults.cardColors(containerColor = palette.surface.copy(alpha = 0.96f)),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, palette.accent)
                     ) {
                         Column(
                             modifier = Modifier
@@ -300,14 +277,14 @@ fun AthkarReaderScreen(
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = GoldPrimary,
+                                color = palette.accent,
                                 modifier = Modifier.size(64.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = Icons.Default.CheckCircle,
                                         contentDescription = null,
-                                        tint = Color(0xFF071914),
+                                        tint = palette.onPrimaryColor,
                                         modifier = Modifier.size(36.dp)
                                     )
                                 }
@@ -319,7 +296,7 @@ fun AthkarReaderScreen(
                                 text = "Alhamdulillah!",
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isNightMode) GoldLight else EmeraldDeep
+                                color = headingColor
                             )
 
                             Spacer(modifier = Modifier.height(6.dp))
@@ -328,7 +305,7 @@ fun AthkarReaderScreen(
                                 text = "You have completed your ${selectedType.titleEnglish}.",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isNightMode) Color.White else Color(0xFF263238),
+                                color = palette.textPrimary,
                                 textAlign = TextAlign.Center
                             )
 
@@ -337,7 +314,7 @@ fun AthkarReaderScreen(
                             Text(
                                 text = "May Allah place you under His divine protection, illuminate your heart with tranquility, and accept every word of your remembrance.",
                                 fontSize = 13.sp,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.7f) else Color.Gray,
+                                color = palette.textSecondary,
                                 textAlign = TextAlign.Center,
                                 lineHeight = 18.sp
                             )
@@ -346,23 +323,20 @@ fun AthkarReaderScreen(
 
                             Button(
                                 onClick = onBack,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isNightMode) GoldPrimary else EmeraldPrimary
-                                ),
+                                colors = ButtonDefaults.buttonColors(containerColor = palette.accent),
                                 shape = RoundedCornerShape(14.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
                                     text = "Return to Tasbih",
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isNightMode) NightBackground else Color.White
+                                    color = palette.onPrimaryColor
                                 )
                             }
                         }
                     }
                 }
             } else {
-                // Active Supplication Card with Scrollable Body and Horizontal Swipe Navigation
                 Card(
                     modifier = Modifier
                         .weight(1f)
@@ -372,7 +346,6 @@ fun AthkarReaderScreen(
                                 onDragStart = { swipeAccumulator = 0f },
                                 onDragEnd = {
                                     if (swipeAccumulator < -40f) {
-                                        // Swiped left -> Next Athkar
                                         if (currentIndex < items.size - 1) {
                                             currentIndex += 1
                                             currentItemCount = 0
@@ -380,7 +353,6 @@ fun AthkarReaderScreen(
                                             isCompletedSession = true
                                         }
                                     } else if (swipeAccumulator > 40f) {
-                                        // Swiped right -> Previous Athkar
                                         if (currentIndex > 0) {
                                             currentIndex -= 1
                                             currentItemCount = 0
@@ -397,13 +369,8 @@ fun AthkarReaderScreen(
                             )
                         },
                     shape = RoundedCornerShape(22.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isNightMode) Color(0xFF0A261E).copy(alpha = 0.94f) else Color(0xFFFFFDF8).copy(alpha = 0.96f)
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.2.dp,
-                        if (isNightMode) GoldPrimary.copy(alpha = 0.35f) else Color(0xFFDFCC9D)
-                    ),
+                    colors = CardDefaults.cardColors(containerColor = palette.surface.copy(alpha = 0.94f)),
+                    border = androidx.compose.foundation.BorderStroke(1.2.dp, palette.cardBorder),
                     elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                 ) {
                     Column(
@@ -416,13 +383,12 @@ fun AthkarReaderScreen(
                                 .weight(1f)
                                 .verticalScroll(rememberScrollState())
                         ) {
-                            // Arabic Text in authentic Amiri Naskh calligraphy
                             Text(
                                 text = currentItem.arabicText,
                                 fontFamily = ArabicCalligraphyFontFamily,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Normal,
-                                color = if (isNightMode) GoldLight else DayEmeraldDeep,
+                                color = headingColor,
                                 textAlign = TextAlign.Right,
                                 lineHeight = 42.sp,
                                 modifier = Modifier
@@ -432,33 +398,30 @@ fun AthkarReaderScreen(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            // Transliteration
                             Text(
                                 text = currentItem.transliteration,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isNightMode) Color(0xFFFFD54F) else Color(0xFF8C6418),
+                                color = if (isNightMode) palette.accentLight else palette.accent,
                                 lineHeight = 19.sp
                             )
 
                             Spacer(modifier = Modifier.height(10.dp))
 
-                            // English Translation
                             Text(
                                 text = currentItem.englishTranslation,
                                 fontSize = 12.sp,
-                                color = if (isNightMode) Color.White.copy(alpha = 0.85f) else Color(0xFF4C6B61),
+                                color = palette.textSecondary,
                                 lineHeight = 18.sp
                             )
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            // Virtue & Hadith reference toggle button
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isNightMode) Color(0xFF10362B) else Color(0xFFF1F8F4))
+                                    .background(palette.surfaceVariant.copy(alpha = 0.72f))
                                     .clickable { showVirtue = !showVirtue }
                                     .padding(horizontal = 10.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -468,7 +431,7 @@ fun AthkarReaderScreen(
                                     Icon(
                                         imageVector = Icons.Default.Info,
                                         contentDescription = "Virtue",
-                                        tint = GoldPrimary,
+                                        tint = palette.accent,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -476,13 +439,13 @@ fun AthkarReaderScreen(
                                         text = "Hadith Virtue & Reference",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isNightMode) GoldLight else EmeraldDeep
+                                        color = headingColor
                                     )
                                 }
                                 Text(
                                     text = if (showVirtue) "Hide ▲" else "Read ▼",
                                     fontSize = 10.sp,
-                                    color = GoldPrimary,
+                                    color = palette.accent,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -493,13 +456,13 @@ fun AthkarReaderScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(if (isNightMode) Color(0xFF081C16) else Color(0xFFFAFBF9))
+                                        .background(palette.background.copy(alpha = 0.65f))
                                         .padding(10.dp)
                                 ) {
                                     Text(
                                         text = currentItem.virtue,
                                         fontSize = 11.sp,
-                                        color = if (isNightMode) Color.White.copy(alpha = 0.8f) else Color(0xFF455A64),
+                                        color = palette.textSecondary,
                                         lineHeight = 16.sp
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -507,7 +470,7 @@ fun AthkarReaderScreen(
                                         text = currentItem.reference,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = GoldPrimary
+                                        color = palette.accent
                                     )
                                 }
                             }
@@ -515,17 +478,12 @@ fun AthkarReaderScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Tap Counter Button for Current Supplication
                         Surface(
                             shape = RoundedCornerShape(16.dp),
-                            color = if (isItemDone) {
-                                if (isNightMode) Color(0xFF133F34) else Color(0xFFE8F5E9)
-                            } else {
-                                if (isNightMode) Color(0xFF103328) else Color(0xFFF1F8F4)
-                            },
+                            color = if (isItemDone) palette.primaryContainer else palette.surfaceVariant.copy(alpha = 0.85f),
                             border = androidx.compose.foundation.BorderStroke(
                                 1.5.dp,
-                                if (isItemDone) GoldPrimary else if (isNightMode) Color(0xFF1E483C) else Color(0xFFD0E0D6)
+                                if (isItemDone) palette.accent else palette.cardBorder
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -536,8 +494,6 @@ fun AthkarReaderScreen(
 
                                         val newC = currentItemCount + 1
                                         currentItemCount = newC
-
-                                        // Record count in repository so it updates streak and heatmap
                                         viewModel.onBeadPulled()
 
                                         if (newC >= target) {
@@ -559,12 +515,12 @@ fun AthkarReaderScreen(
                                         text = if (isItemDone) "Complete ✨" else "Tap to Recite",
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isItemDone) GoldPrimary else (if (isNightMode) Color.White else Color(0xFF263238))
+                                        color = if (isItemDone) palette.accent else palette.textPrimary
                                     )
                                     Text(
                                         text = if (isItemDone) "Target reached for this supplication" else "Prescribed: $target time${if (target > 1) "s" else ""}",
                                         fontSize = 11.sp,
-                                        color = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray
+                                        color = palette.textSecondary
                                     )
                                 }
 
@@ -573,12 +529,12 @@ fun AthkarReaderScreen(
                                         text = "$currentItemCount",
                                         fontSize = 28.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isItemDone) GoldLight else (if (isNightMode) Color.White else EmeraldDeep)
+                                        color = headingColor
                                     )
                                     Text(
                                         text = " / $target",
                                         fontSize = 14.sp,
-                                        color = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray,
+                                        color = palette.textSecondary,
                                         modifier = Modifier.padding(start = 2.dp)
                                     )
                                 }
@@ -587,16 +543,14 @@ fun AthkarReaderScreen(
                     }
                 }
 
-                // Hint for horizontal swipe or button navigation
                 Text(
                     text = "Swipe ◂ ▸ or tap buttons to navigate",
                     fontSize = 11.sp,
-                    color = if (isNightMode) Color.White.copy(alpha = 0.5f) else Color.Gray,
+                    color = palette.textSecondary,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 6.dp)
                 )
 
-                // Bottom Step Navigation (Previous / Reset / Next)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -625,7 +579,6 @@ fun AthkarReaderScreen(
                         Text("Prev", fontSize = 12.sp)
                     }
 
-                    // Reset current item count button
                     IconButton(
                         onClick = { currentItemCount = 0 },
                         modifier = Modifier.testTag("athkar_reset_item_button")
@@ -633,7 +586,7 @@ fun AthkarReaderScreen(
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Reset this item",
-                            tint = if (isNightMode) Color.White.copy(alpha = 0.6f) else Color.Gray
+                            tint = palette.textSecondary
                         )
                     }
 
@@ -646,23 +599,21 @@ fun AthkarReaderScreen(
                                 isCompletedSession = true
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isNightMode) GoldPrimary else EmeraldPrimary
-                        ),
+                        colors = ButtonDefaults.buttonColors(containerColor = palette.accent),
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.testTag("athkar_next_button")
                     ) {
                         Text(
                             text = if (currentIndex < items.size - 1) "Next" else "Finish ✨",
                             fontWeight = FontWeight.Bold,
-                            color = if (isNightMode) NightBackground else Color.White,
+                            color = palette.onPrimaryColor,
                             fontSize = 12.sp
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = "Next",
-                            tint = if (isNightMode) NightBackground else Color.White,
+                            tint = palette.onPrimaryColor,
                             modifier = Modifier.size(16.dp)
                         )
                     }
