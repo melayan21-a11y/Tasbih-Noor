@@ -7,6 +7,9 @@ import com.example.data.TasbihDatabase
 import com.example.data.dao.DhikrDailyStat
 import com.example.data.dao.DhikrTypeStat
 import com.example.data.model.DhikrItem
+import com.example.data.model.DhikrPlaylist
+import com.example.data.model.DhikrPlaylistSerializer
+import com.example.data.model.DhikrPlaylistStep
 import com.example.data.repository.StreakInfo
 import com.example.data.repository.TasbihRepository
 import com.example.data.prayer.CalculationMethod
@@ -53,6 +56,13 @@ data class MonthDayStat(
     val isFuture: Boolean
 )
 
+data class MilestoneBanner(
+    val id: Long,
+    val title: String,
+    val subtitle: String,
+    val isMajor: Boolean = false
+)
+
 enum class SalahSetStage(
     val stepIndex: Int,
     val transliteration: String,
@@ -97,10 +107,17 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     val reminderManager = DhikrReminderManager(application.applicationContext)
 
     private val database = TasbihDatabase.getDatabase(application.applicationContext, viewModelScope)
-    private val repository = TasbihRepository(database.dhikrDao(), database.dhikrLogDao())
+    private val repository = TasbihRepository(
+        database.dhikrDao(),
+        database.dhikrLogDao(),
+        database.dhikrPlaylistDao()
+    )
 
     val allDhikrs: StateFlow<List<DhikrItem>> = repository.allDhikrs
         .map { list -> list.distinctBy { it.transliteration.trim().lowercase() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allPlaylists: StateFlow<List<DhikrPlaylist>> = repository.allPlaylists
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val dailyTotals: StateFlow<List<DhikrDailyStat>> = repository.dailyTotals
@@ -118,7 +135,17 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     val streakInfo: StateFlow<StreakInfo> = repository.calculateStreakFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StreakInfo())
 
-    // After Salah Tasbih (33 SubhanAllah -> 33 Alhamdulillah -> 33 Allahu Akbar -> 1 Seal = 100)
+    // Guided Playlist Runner (supports built-in After-Salah Set + user custom playlists)
+    private val _activePlaylist = MutableStateFlow<DhikrPlaylist?>(null)
+    val activePlaylist: StateFlow<DhikrPlaylist?> = _activePlaylist.asStateFlow()
+
+    private val _activePlaylistSteps = MutableStateFlow<List<DhikrPlaylistStep>>(emptyList())
+    val activePlaylistSteps: StateFlow<List<DhikrPlaylistStep>> = _activePlaylistSteps.asStateFlow()
+
+    private val _activePlaylistStepIndex = MutableStateFlow(0)
+    val activePlaylistStepIndex: StateFlow<Int> = _activePlaylistStepIndex.asStateFlow()
+
+    // Legacy After-Salah Tasbih flags kept synced for full compatibility
     private val _isSalahSetMode = MutableStateFlow(preferences.isSalahSetMode)
     val isSalahSetMode: StateFlow<Boolean> = _isSalahSetMode.asStateFlow()
 
@@ -167,6 +194,25 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     // Keep screen awake during dhikr recitation
     private val _keepScreenAwake = MutableStateFlow(preferences.keepScreenAwake)
     val keepScreenAwake: StateFlow<Boolean> = _keepScreenAwake.asStateFlow()
+
+    // Daily Target Goal, Chimes, Focus Mode & Bead Noor Ripple
+    private val _dailyGoalTarget = MutableStateFlow(preferences.dailyGoalTarget)
+    val dailyGoalTarget: StateFlow<Int> = _dailyGoalTarget.asStateFlow()
+
+    private val _milestoneChimeEnabled = MutableStateFlow(preferences.milestoneChimeEnabled)
+    val milestoneChimeEnabled: StateFlow<Boolean> = _milestoneChimeEnabled.asStateFlow()
+
+    private val _isFocusMode = MutableStateFlow(preferences.isFocusMode)
+    val isFocusMode: StateFlow<Boolean> = _isFocusMode.asStateFlow()
+
+    private val _beadPullSequence = MutableStateFlow(0)
+    val beadPullSequence: StateFlow<Int> = _beadPullSequence.asStateFlow()
+
+    private val _milestoneBanner = MutableStateFlow<MilestoneBanner?>(null)
+    val milestoneBanner: StateFlow<MilestoneBanner?> = _milestoneBanner.asStateFlow()
+
+    private var milestoneDismissJob: Job? = null
+    private var lastCelebratedGoalDate: String? = null
 
     // Auto-Guide & Natural Voice Engine
     val voiceState: StateFlow<VoiceEngineState> = audioHapticManager.voiceState
@@ -274,20 +320,43 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun startSalahSetMode() {
-        _isSalahSetMode.value = true
-        preferences.isSalahSetMode = true
-        _salahSetStage.value = SalahSetStage.SUBHANALLAH
+    fun startPlaylist(playlist: DhikrPlaylist) {
+        val steps = playlist.steps()
+        if (steps.isEmpty()) return
+        _activePlaylist.value = playlist
+        _activePlaylistSteps.value = steps
+        _activePlaylistStepIndex.value = 0
         _currentCount.value = 0
-        _targetCount.value = 33
-        val subhanAllah = allDhikrs.value.find { it.id == 1L || it.transliteration.contains("SubhanAllah", ignoreCase = true) }
-        if (subhanAllah != null) {
-            _selectedDhikr.value = subhanAllah
+        _lapsCompleted.value = 0
+        _targetCount.value = steps[0].targetCount
+
+        val isSalah = playlist.id == 1L
+        _isSalahSetMode.value = isSalah
+        preferences.isSalahSetMode = isSalah
+        if (isSalah) {
+            _salahSetStage.value = SalahSetStage.SUBHANALLAH
         }
+        applyPlaylistStepDhikr(steps[0])
         stopAutoGuide()
     }
 
-    fun exitSalahSetMode() {
+    private fun applyPlaylistStepDhikr(step: DhikrPlaylistStep) {
+        val matching = allDhikrs.value.find { it.id == step.dhikrId }
+            ?: DhikrItem(
+                id = step.dhikrId,
+                arabicText = step.arabicText,
+                transliteration = step.transliteration,
+                englishTranslation = step.englishTranslation,
+                category = _activePlaylist.value?.name ?: "Playlist",
+                defaultTarget = step.targetCount
+            )
+        _selectedDhikr.value = matching
+    }
+
+    fun exitPlaylistMode() {
+        _activePlaylist.value = null
+        _activePlaylistSteps.value = emptyList()
+        _activePlaylistStepIndex.value = 0
         _isSalahSetMode.value = false
         preferences.isSalahSetMode = false
         _salahSetStage.value = SalahSetStage.SUBHANALLAH
@@ -298,7 +367,41 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
         _targetCount.value = matching?.defaultTarget ?: 33
     }
 
+    fun startSalahSetMode() {
+        val salahPlaylist = allPlaylists.value.find { it.id == 1L } ?: DhikrPlaylist(
+            id = 1L,
+            name = "After-Salah Tasbih Set",
+            subtitle = "Prophetic 100 Praises Chain • Sunnah",
+            isBuiltIn = true,
+            orderIndex = 1,
+            stepsJson = DhikrPlaylistSerializer.stepsToJson(
+                SalahSetStage.entries.map {
+                    DhikrPlaylistStep(
+                        dhikrId = when (it) {
+                            SalahSetStage.SUBHANALLAH -> 1L
+                            SalahSetStage.ALHAMDULILLAH -> 2L
+                            SalahSetStage.ALLAHU_AKBAR -> 3L
+                            SalahSetStage.TAHLIL_SEAL -> 5L
+                        },
+                        arabicText = it.arabicText,
+                        transliteration = it.transliteration,
+                        englishTranslation = it.translation,
+                        targetCount = it.target
+                    )
+                }
+            )
+        )
+        startPlaylist(salahPlaylist)
+    }
+
+    fun exitSalahSetMode() {
+        exitPlaylistMode()
+    }
+
     fun selectDhikr(dhikr: DhikrItem) {
+        _activePlaylist.value = null
+        _activePlaylistSteps.value = emptyList()
+        _activePlaylistStepIndex.value = 0
         _isSalahSetMode.value = false
         preferences.isSalahSetMode = false
         _selectedDhikr.value = dhikr
@@ -311,19 +414,20 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun selectNextDhikr() {
-        if (_isSalahSetMode.value) {
-            val nextStage = when (_salahSetStage.value) {
-                SalahSetStage.SUBHANALLAH -> SalahSetStage.ALHAMDULILLAH
-                SalahSetStage.ALHAMDULILLAH -> SalahSetStage.ALLAHU_AKBAR
-                SalahSetStage.ALLAHU_AKBAR -> SalahSetStage.TAHLIL_SEAL
-                SalahSetStage.TAHLIL_SEAL -> {
-                    exitSalahSetMode()
-                    return
+        val playlistSteps = _activePlaylistSteps.value
+        if (_activePlaylist.value != null && playlistSteps.isNotEmpty()) {
+            val nextIdx = _activePlaylistStepIndex.value + 1
+            if (nextIdx < playlistSteps.size) {
+                _activePlaylistStepIndex.value = nextIdx
+                _currentCount.value = 0
+                _targetCount.value = playlistSteps[nextIdx].targetCount
+                if (_isSalahSetMode.value && nextIdx in SalahSetStage.entries.indices) {
+                    _salahSetStage.value = SalahSetStage.entries[nextIdx]
                 }
+                applyPlaylistStepDhikr(playlistSteps[nextIdx])
+            } else {
+                exitPlaylistMode()
             }
-            _salahSetStage.value = nextStage
-            _currentCount.value = 0
-            _targetCount.value = nextStage.target
             return
         }
         val list = allDhikrs.value
@@ -335,16 +439,18 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun selectPreviousDhikr() {
-        if (_isSalahSetMode.value) {
-            val prevStage = when (_salahSetStage.value) {
-                SalahSetStage.SUBHANALLAH -> return
-                SalahSetStage.ALHAMDULILLAH -> SalahSetStage.SUBHANALLAH
-                SalahSetStage.ALLAHU_AKBAR -> SalahSetStage.ALHAMDULILLAH
-                SalahSetStage.TAHLIL_SEAL -> SalahSetStage.ALLAHU_AKBAR
+        val playlistSteps = _activePlaylistSteps.value
+        if (_activePlaylist.value != null && playlistSteps.isNotEmpty()) {
+            val prevIdx = _activePlaylistStepIndex.value - 1
+            if (prevIdx >= 0) {
+                _activePlaylistStepIndex.value = prevIdx
+                _currentCount.value = 0
+                _targetCount.value = playlistSteps[prevIdx].targetCount
+                if (_isSalahSetMode.value && prevIdx in SalahSetStage.entries.indices) {
+                    _salahSetStage.value = SalahSetStage.entries[prevIdx]
+                }
+                applyPlaylistStepDhikr(playlistSteps[prevIdx])
             }
-            _salahSetStage.value = prevStage
-            _currentCount.value = 0
-            _targetCount.value = prevStage.target
             return
         }
         val list = allDhikrs.value
@@ -355,59 +461,106 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
         selectDhikr(list[prevIndex])
     }
 
+    private fun emitMilestoneBanner(title: String, subtitle: String, isMajor: Boolean = false) {
+        milestoneDismissJob?.cancel()
+        val id = System.currentTimeMillis()
+        _milestoneBanner.value = MilestoneBanner(
+            id = id,
+            title = title,
+            subtitle = subtitle,
+            isMajor = isMajor
+        )
+        milestoneDismissJob = viewModelScope.launch {
+            delay(2700)
+            if (_milestoneBanner.value?.id == id) {
+                _milestoneBanner.value = null
+            }
+        }
+    }
+
+    private fun checkDailyGoalThreshold(): Boolean {
+        val goal = _dailyGoalTarget.value
+        val today = repository.getTodayDateString()
+        val currentToday = todayTotal.value
+        if (goal > 0 && currentToday < goal && currentToday + 1 >= goal && lastCelebratedGoalDate != today) {
+            lastCelebratedGoalDate = today
+            if (_milestoneChimeEnabled.value) {
+                audioHapticManager.playMilestoneChime()
+            }
+            audioHapticManager.triggerTargetReachedHaptic()
+            emitMilestoneBanner(
+                title = "Daily Goal Reached ($goal/$goal)",
+                subtitle = "MashaAllah! Consistent daily remembrance illuminates the heart.",
+                isMajor = true
+            )
+            return true
+        }
+        return false
+    }
+
     fun onBeadPulled() {
-        if (_isSalahSetMode.value) {
+        _beadPullSequence.value = _beadPullSequence.value + 1
+
+        val activePl = _activePlaylist.value
+        val playlistSteps = _activePlaylistSteps.value
+        if (activePl != null && playlistSteps.isNotEmpty()) {
             audioHapticManager.playBeadSound(_soundType.value)
             audioHapticManager.triggerBeadHaptic(_hapticIntensity.value)
 
-            val stage = _salahSetStage.value
-            val newCount = _currentCount.value + 1
+            val stepIdx = _activePlaylistStepIndex.value.coerceIn(0, playlistSteps.lastIndex)
+            val step = playlistSteps[stepIdx]
+            val dhikrToRecord = allDhikrs.value.find { it.id == step.dhikrId }
+                ?: DhikrItem(
+                    id = step.dhikrId,
+                    arabicText = step.arabicText,
+                    transliteration = step.transliteration,
+                    englishTranslation = step.englishTranslation,
+                    category = activePl.name,
+                    defaultTarget = step.targetCount
+                )
 
-            // Record in database
-            val dhikrToRecord = when (stage) {
-                SalahSetStage.SUBHANALLAH -> allDhikrs.value.find { it.id == 1L }
-                SalahSetStage.ALHAMDULILLAH -> allDhikrs.value.find { it.id == 2L }
-                SalahSetStage.ALLAHU_AKBAR -> allDhikrs.value.find { it.id == 3L }
-                SalahSetStage.TAHLIL_SEAL -> allDhikrs.value.find { it.id == 5L }
-            } ?: _selectedDhikr.value ?: allDhikrs.value.firstOrNull()
-
-            if (dhikrToRecord != null) {
-                viewModelScope.launch {
-                    repository.recordDhikrCount(dhikrToRecord, 1)
-                }
+            val goalReachedNow = checkDailyGoalThreshold()
+            viewModelScope.launch {
+                repository.recordDhikrCount(dhikrToRecord, 1)
             }
 
-            if (newCount >= stage.target) {
+            val newCount = _currentCount.value + 1
+            if (newCount >= step.targetCount) {
                 audioHapticManager.triggerTargetReachedHaptic()
-                when (stage) {
-                    SalahSetStage.SUBHANALLAH -> {
-                        _salahSetStage.value = SalahSetStage.ALHAMDULILLAH
-                        _currentCount.value = 0
-                        _targetCount.value = 33
-                        val alhamd = allDhikrs.value.find { it.id == 2L }
-                        if (alhamd != null) _selectedDhikr.value = alhamd
+                if (stepIdx < playlistSteps.lastIndex) {
+                    val nextIdx = stepIdx + 1
+                    val nextStep = playlistSteps[nextIdx]
+                    _activePlaylistStepIndex.value = nextIdx
+                    _currentCount.value = 0
+                    _targetCount.value = nextStep.targetCount
+                    if (_isSalahSetMode.value && nextIdx in SalahSetStage.entries.indices) {
+                        _salahSetStage.value = SalahSetStage.entries[nextIdx]
                     }
-                    SalahSetStage.ALHAMDULILLAH -> {
-                        _salahSetStage.value = SalahSetStage.ALLAHU_AKBAR
-                        _currentCount.value = 0
-                        _targetCount.value = 33
-                        val akbar = allDhikrs.value.find { it.id == 3L }
-                        if (akbar != null) _selectedDhikr.value = akbar
+                    applyPlaylistStepDhikr(nextStep)
+                    if (!goalReachedNow) {
+                        if (_milestoneChimeEnabled.value) audioHapticManager.playLapChime()
+                        emitMilestoneBanner(
+                            title = "Step ${stepIdx + 1} Complete",
+                            subtitle = "Continuing to ${nextStep.transliteration} (${nextStep.targetCount}×)"
+                        )
                     }
-                    SalahSetStage.ALLAHU_AKBAR -> {
-                        _salahSetStage.value = SalahSetStage.TAHLIL_SEAL
-                        _currentCount.value = 0
-                        _targetCount.value = 1
-                        val tahlil = allDhikrs.value.find { it.id == 5L }
-                        if (tahlil != null) _selectedDhikr.value = tahlil
-                    }
-                    SalahSetStage.TAHLIL_SEAL -> {
-                        _lapsCompleted.value += 1
+                } else {
+                    _lapsCompleted.value += 1
+                    _activePlaylistStepIndex.value = 0
+                    val firstStep = playlistSteps[0]
+                    _currentCount.value = 0
+                    _targetCount.value = firstStep.targetCount
+                    if (_isSalahSetMode.value) {
                         _salahSetStage.value = SalahSetStage.SUBHANALLAH
-                        _currentCount.value = 0
-                        _targetCount.value = 33
-                        val subhan = allDhikrs.value.find { it.id == 1L }
-                        if (subhan != null) _selectedDhikr.value = subhan
+                    }
+                    applyPlaylistStepDhikr(firstStep)
+                    if (!goalReachedNow) {
+                        if (_milestoneChimeEnabled.value) audioHapticManager.playMilestoneChime()
+                        emitMilestoneBanner(
+                            title = "${activePl.name} Complete!",
+                            subtitle = "TaqabbalAllah • ${activePl.totalCount()} praises recorded",
+                            isMajor = true
+                        )
                     }
                 }
             } else {
@@ -426,6 +579,7 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
         audioHapticManager.playBeadSound(_soundType.value)
         audioHapticManager.triggerBeadHaptic(_hapticIntensity.value)
 
+        val goalReachedNow = checkDailyGoalThreshold()
         val newCount = _currentCount.value + 1
         val target = _targetCount.value
 
@@ -433,6 +587,13 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
             _currentCount.value = 0
             _lapsCompleted.value += 1
             audioHapticManager.triggerTargetReachedHaptic()
+            if (!goalReachedNow) {
+                if (_milestoneChimeEnabled.value) audioHapticManager.playLapChime()
+                emitMilestoneBanner(
+                    title = "Lap ${_lapsCompleted.value} Complete • MashaAllah",
+                    subtitle = "$target ${dhikr.transliteration} finished"
+                )
+            }
         } else {
             _currentCount.value = newCount
         }
@@ -444,42 +605,34 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun undoLastBead() {
-        if (_isSalahSetMode.value) {
+        val activePl = _activePlaylist.value
+        val playlistSteps = _activePlaylistSteps.value
+        if (activePl != null && playlistSteps.isNotEmpty()) {
             if (_currentCount.value > 0) {
                 _currentCount.value -= 1
             } else {
-                when (_salahSetStage.value) {
-                    SalahSetStage.TAHLIL_SEAL -> {
-                        _salahSetStage.value = SalahSetStage.ALLAHU_AKBAR
-                        _currentCount.value = 32
-                        _targetCount.value = 33
-                        val akbar = allDhikrs.value.find { it.id == 3L }
-                        if (akbar != null) _selectedDhikr.value = akbar
+                val curIdx = _activePlaylistStepIndex.value
+                if (curIdx > 0) {
+                    val prevIdx = curIdx - 1
+                    val prevStep = playlistSteps[prevIdx]
+                    _activePlaylistStepIndex.value = prevIdx
+                    _currentCount.value = (prevStep.targetCount - 1).coerceAtLeast(0)
+                    _targetCount.value = prevStep.targetCount
+                    if (_isSalahSetMode.value && prevIdx in SalahSetStage.entries.indices) {
+                        _salahSetStage.value = SalahSetStage.entries[prevIdx]
                     }
-                    SalahSetStage.ALLAHU_AKBAR -> {
-                        _salahSetStage.value = SalahSetStage.ALHAMDULILLAH
-                        _currentCount.value = 32
-                        _targetCount.value = 33
-                        val alhamd = allDhikrs.value.find { it.id == 2L }
-                        if (alhamd != null) _selectedDhikr.value = alhamd
+                    applyPlaylistStepDhikr(prevStep)
+                } else if (_lapsCompleted.value > 0) {
+                    val lastIdx = playlistSteps.lastIndex
+                    val lastStep = playlistSteps[lastIdx]
+                    _lapsCompleted.value -= 1
+                    _activePlaylistStepIndex.value = lastIdx
+                    _currentCount.value = (lastStep.targetCount - 1).coerceAtLeast(0)
+                    _targetCount.value = lastStep.targetCount
+                    if (_isSalahSetMode.value && lastIdx in SalahSetStage.entries.indices) {
+                        _salahSetStage.value = SalahSetStage.entries[lastIdx]
                     }
-                    SalahSetStage.ALHAMDULILLAH -> {
-                        _salahSetStage.value = SalahSetStage.SUBHANALLAH
-                        _currentCount.value = 32
-                        _targetCount.value = 33
-                        val subhan = allDhikrs.value.find { it.id == 1L }
-                        if (subhan != null) _selectedDhikr.value = subhan
-                    }
-                    SalahSetStage.SUBHANALLAH -> {
-                        if (_lapsCompleted.value > 0) {
-                            _lapsCompleted.value -= 1
-                            _salahSetStage.value = SalahSetStage.TAHLIL_SEAL
-                            _currentCount.value = 0
-                            _targetCount.value = 1
-                            val tahlil = allDhikrs.value.find { it.id == 5L }
-                            if (tahlil != null) _selectedDhikr.value = tahlil
-                        }
-                    }
+                    applyPlaylistStepDhikr(lastStep)
                 }
             }
             return
@@ -494,12 +647,15 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun resetCounter() {
-        if (_isSalahSetMode.value) {
-            _salahSetStage.value = SalahSetStage.SUBHANALLAH
+        val playlistSteps = _activePlaylistSteps.value
+        if (_activePlaylist.value != null && playlistSteps.isNotEmpty()) {
+            _activePlaylistStepIndex.value = 0
             _currentCount.value = 0
-            _targetCount.value = 33
-            val subhan = allDhikrs.value.find { it.id == 1L }
-            if (subhan != null) _selectedDhikr.value = subhan
+            _targetCount.value = playlistSteps[0].targetCount
+            if (_isSalahSetMode.value) {
+                _salahSetStage.value = SalahSetStage.SUBHANALLAH
+            }
+            applyPlaylistStepDhikr(playlistSteps[0])
         } else {
             _currentCount.value = 0
         }
@@ -511,6 +667,56 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
         _targetCount.value = target
         _currentCount.value = 0
         preferences.savedTargetCount = target
+    }
+
+    fun setDailyGoalTarget(goal: Int) {
+        val sanitized = goal.coerceIn(10, 10000)
+        _dailyGoalTarget.value = sanitized
+        preferences.dailyGoalTarget = sanitized
+    }
+
+    fun setMilestoneChimeEnabled(enabled: Boolean) {
+        _milestoneChimeEnabled.value = enabled
+        preferences.milestoneChimeEnabled = enabled
+        if (enabled) {
+            audioHapticManager.playLapChime()
+        }
+    }
+
+    fun setFocusMode(enabled: Boolean) {
+        _isFocusMode.value = enabled
+        preferences.isFocusMode = enabled
+    }
+
+    fun createCustomPlaylist(
+        name: String,
+        subtitle: String,
+        steps: List<DhikrPlaylistStep>
+    ) {
+        if (name.isBlank() || steps.isEmpty()) return
+        viewModelScope.launch {
+            val totalBeads = steps.sumOf { it.targetCount.coerceAtLeast(1) }
+            val resolvedSubtitle = subtitle.ifBlank {
+                "${steps.size} steps • $totalBeads beads"
+            }
+            val playlist = DhikrPlaylist(
+                name = name.trim(),
+                subtitle = resolvedSubtitle,
+                stepsJson = DhikrPlaylistSerializer.stepsToJson(steps),
+                isBuiltIn = false,
+                orderIndex = (allPlaylists.value.maxOfOrNull { it.orderIndex } ?: 3) + 1
+            )
+            repository.savePlaylist(playlist)
+        }
+    }
+
+    fun deletePlaylist(playlist: DhikrPlaylist) {
+        viewModelScope.launch {
+            if (_activePlaylist.value?.id == playlist.id) {
+                exitPlaylistMode()
+            }
+            repository.deletePlaylist(playlist)
+        }
     }
 
     fun setNightMode(enabled: Boolean) {
@@ -768,7 +974,8 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val dhikrs = repository.getAllDhikrsSnapshot().filter { it.isCustom }
             val logs = repository.getAllLogsSnapshot()
-            val json = BackupManager.createBackupJson(dhikrs, logs)
+            val playlists = repository.getCustomPlaylistsSnapshot()
+            val json = BackupManager.createBackupJson(dhikrs, logs, playlists)
             onResult(json)
         }
     }
@@ -785,7 +992,11 @@ class TasbihViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val result = BackupManager.parseBackupJson(jsonString)
             if (result.success) {
-                repository.restoreData(result.restoredDhikrs, result.restoredLogs)
+                repository.restoreData(
+                    items = result.restoredDhikrs,
+                    logs = result.restoredLogs,
+                    playlists = result.restoredPlaylists
+                )
             }
             onComplete(result)
         }

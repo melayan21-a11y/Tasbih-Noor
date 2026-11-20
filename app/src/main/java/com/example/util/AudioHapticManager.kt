@@ -109,6 +109,10 @@ class AudioHapticManager(private val context: Context) {
     private var crystalVariations: List<ByteArray> = emptyList()
     private var chimeVariations: List<ByteArray> = emptyList()
     private var pearlVariations: List<ByteArray> = emptyList()
+    private var lapChimePcm: ByteArray = ByteArray(0)
+    private var milestoneChimePcm: ByteArray = ByteArray(0)
+    private var lapChimeSoundId: Int = 0
+    private var milestoneChimeSoundId: Int = 0
     private var variationCursor = 0
     private val sampleRate = 44100
 
@@ -442,9 +446,81 @@ class AudioHapticManager(private val context: Context) {
                     soundBanks[type] = ids
                 }
             }
+
+            // Gentle 2-note pentatonic chime for target laps (D5 -> A5)
+            lapChimePcm = synthesizeHarmonicChime(
+                frequenciesHz = listOf(587.33, 880.0),
+                noteOffsetSeconds = 0.085,
+                durationMs = 460
+            )
+            // Radiant 3-note sanctuary chord for playlist / daily goal completion (D5 -> F#5 -> A5)
+            milestoneChimePcm = synthesizeHarmonicChime(
+                frequenciesHz = listOf(587.33, 739.99, 880.0),
+                noteOffsetSeconds = 0.095,
+                durationMs = 660
+            )
+
+            try {
+                val lapWav = File(sfxDir, "lap_sanctuary_chime.wav")
+                writePcmAsWav(lapWav, lapChimePcm)
+                val lapId = pool.load(lapWav.absolutePath, 1)
+                if (lapId > 0) lapChimeSoundId = lapId
+
+                val milestoneWav = File(sfxDir, "milestone_sanctuary_chime.wav")
+                writePcmAsWav(milestoneWav, milestoneChimePcm)
+                val milestoneId = pool.load(milestoneWav.absolutePath, 1)
+                if (milestoneId > 0) milestoneChimeSoundId = milestoneId
+            } catch (t: Throwable) {
+                Log.e("AudioHapticManager", "Failed loading harmonic chimes", t)
+            }
         } catch (e: Throwable) {
             Log.e("AudioHapticManager", "Error generating bead sounds", e)
         }
+    }
+
+    internal fun synthesizeHarmonicChime(
+        frequenciesHz: List<Double>,
+        noteOffsetSeconds: Double,
+        durationMs: Int
+    ): ByteArray {
+        val signalSamples = (sampleRate * durationMs / 1000.0).toInt().coerceAtLeast(256)
+        val raw = DoubleArray(signalSamples)
+        var maxPeak = 1e-6
+
+        for (i in 0 until signalSamples) {
+            val t = i.toDouble() / sampleRate
+            var mix = 0.0
+            frequenciesHz.forEachIndexed { idx, freq ->
+                val localT = t - (idx * noteOffsetSeconds)
+                if (localT >= 0.0) {
+                    val attack = if (localT < 0.008) localT / 0.008 else 1.0
+                    val body = (
+                        0.68 * sin(2.0 * PI * freq * localT) * exp(-5.8 * localT) +
+                        0.22 * sin(2.0 * PI * freq * 2.0 * localT) * exp(-11.5 * localT) +
+                        0.10 * sin(2.0 * PI * freq * 3.0 * localT) * exp(-18.0 * localT)
+                    )
+                    mix += body * attack
+                }
+            }
+            val tailSamples = (sampleRate * 0.025).toInt().coerceAtLeast(1)
+            val tailEnv = if (i >= signalSamples - tailSamples) {
+                (signalSamples - 1 - i).toDouble() / tailSamples
+            } else 1.0
+            val sampleVal = mix * tailEnv
+            raw[i] = sampleVal
+            val absVal = abs(sampleVal)
+            if (absVal > maxPeak) maxPeak = absVal
+        }
+
+        val normGain = 0.82 / maxPeak
+        val pcmData = ByteArray(signalSamples * 2)
+        for (i in 0 until signalSamples) {
+            val normalized = (raw[i] * normGain).coerceIn(-1.0, 1.0)
+            val sampleShort = (normalized * 32767.0).toInt().toShort()
+            pcmData[i * 2] = (sampleShort.toInt() and 0xFF).toByte()
+            pcmData[i * 2 + 1] = ((sampleShort.toInt() shr 8) and 0xFF).toByte()
+        }
+        return pcmData
     }
 
     internal fun synthesizeMultiModalBead(
@@ -589,6 +665,32 @@ class AudioHapticManager(private val context: Context) {
 
         audioScope.launch {
             playPcmStreamFallback(pcm)
+        }
+    }
+
+    fun playLapChime() {
+        val pool = soundPool
+        if (pool != null && lapChimeSoundId > 0 && loadedSoundIds[lapChimeSoundId] == true) {
+            try {
+                val streamId = pool.play(lapChimeSoundId, 0.85f, 0.85f, 1, 0, 1.0f)
+                if (streamId != 0) return
+            } catch (_: Throwable) {}
+        }
+        if (lapChimePcm.isNotEmpty()) {
+            audioScope.launch { playPcmStreamFallback(lapChimePcm) }
+        }
+    }
+
+    fun playMilestoneChime() {
+        val pool = soundPool
+        if (pool != null && milestoneChimeSoundId > 0 && loadedSoundIds[milestoneChimeSoundId] == true) {
+            try {
+                val streamId = pool.play(milestoneChimeSoundId, 0.92f, 0.92f, 1, 0, 1.0f)
+                if (streamId != 0) return
+            } catch (_: Throwable) {}
+        }
+        if (milestoneChimePcm.isNotEmpty()) {
+            audioScope.launch { playPcmStreamFallback(milestoneChimePcm) }
         }
     }
 

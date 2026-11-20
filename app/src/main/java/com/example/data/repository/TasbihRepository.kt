@@ -3,9 +3,11 @@ package com.example.data.repository
 import com.example.data.dao.DhikrDailyStat
 import com.example.data.dao.DhikrDao
 import com.example.data.dao.DhikrLogDao
+import com.example.data.dao.DhikrPlaylistDao
 import com.example.data.dao.DhikrTypeStat
 import com.example.data.model.DhikrItem
 import com.example.data.model.DhikrLog
+import com.example.data.model.DhikrPlaylist
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -16,9 +18,11 @@ import java.util.Locale
 
 class TasbihRepository(
     private val dhikrDao: DhikrDao,
-    private val dhikrLogDao: DhikrLogDao
+    private val dhikrLogDao: DhikrLogDao,
+    private val dhikrPlaylistDao: DhikrPlaylistDao
 ) {
     val allDhikrs: Flow<List<DhikrItem>> = dhikrDao.getAllDhikrItems()
+    val allPlaylists: Flow<List<DhikrPlaylist>> = dhikrPlaylistDao.getAllPlaylists()
     val dailyTotals: Flow<List<DhikrDailyStat>> = dhikrLogDao.getDailyTotals()
     val typeStats: Flow<List<DhikrTypeStat>> = dhikrLogDao.getStatsByDhikrType()
     val lifetimeTotal: Flow<Int> = dhikrLogDao.getLifetimeTotal()
@@ -55,6 +59,16 @@ class TasbihRepository(
         dhikrDao.updateDhikr(item)
     }
 
+    suspend fun savePlaylist(playlist: DhikrPlaylist): Long {
+        return dhikrPlaylistDao.insertPlaylist(playlist)
+    }
+
+    suspend fun deletePlaylist(playlist: DhikrPlaylist) {
+        if (!playlist.isBuiltIn) {
+            dhikrPlaylistDao.deletePlaylist(playlist)
+        }
+    }
+
     suspend fun getAllLogsSnapshot(): List<DhikrLog> {
         return dhikrLogDao.getAllLogs().first()
     }
@@ -63,12 +77,23 @@ class TasbihRepository(
         return dhikrDao.getAllDhikrItems().first()
     }
 
-    suspend fun restoreData(items: List<DhikrItem>, logs: List<DhikrLog>) {
+    suspend fun getCustomPlaylistsSnapshot(): List<DhikrPlaylist> {
+        return dhikrPlaylistDao.getAllPlaylistsList().filter { !it.isBuiltIn }
+    }
+
+    suspend fun restoreData(
+        items: List<DhikrItem>,
+        logs: List<DhikrLog>,
+        playlists: List<DhikrPlaylist> = emptyList()
+    ) {
         for (item in items) {
             dhikrDao.insertDhikr(item)
         }
         for (log in logs) {
             dhikrLogDao.insertLog(log)
+        }
+        for (playlist in playlists) {
+            dhikrPlaylistDao.insertPlaylist(playlist.copy(id = 0, isBuiltIn = false))
         }
     }
 
@@ -107,6 +132,9 @@ class TasbihRepository(
                     )
                 )
             }
+        }
+        if (dhikrPlaylistDao.countPlaylists() == 0) {
+            com.example.data.TasbihDatabase.populateInitialPlaylists(dhikrPlaylistDao)
         }
     }
 

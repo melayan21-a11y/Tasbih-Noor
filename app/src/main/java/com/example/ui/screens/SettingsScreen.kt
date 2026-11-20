@@ -110,6 +110,7 @@ fun SettingsScreen(
     val soundType by viewModel.soundType.collectAsState()
     val hapticIntensity by viewModel.hapticIntensity.collectAsState()
     val keepScreenAwake by viewModel.keepScreenAwake.collectAsState()
+    val milestoneChimeEnabled by viewModel.milestoneChimeEnabled.collectAsState()
     val reminders by viewModel.reminders.collectAsState()
     val voiceState by viewModel.voiceState.collectAsState()
     val speechCadence by viewModel.speechCadence.collectAsState()
@@ -805,6 +806,40 @@ fun SettingsScreen(
                                     )
                                 }
                             }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+                        HorizontalDivider(color = palette.cardBorder.copy(alpha = 0.5f))
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Lap & Milestone Chimes",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = cardHeadingColor
+                                )
+                                Text(
+                                    text = "Play a gentle harmonic bell chord when completing a target lap, playlist, or daily goal.",
+                                    fontSize = 11.sp,
+                                    color = palette.textSecondary
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Switch(
+                                checked = milestoneChimeEnabled,
+                                onCheckedChange = { viewModel.setMilestoneChimeEnabled(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = palette.onPrimaryColor,
+                                    checkedTrackColor = palette.accent
+                                ),
+                                modifier = Modifier.testTag("milestone_chime_switch")
+                            )
                         }
                     }
                 }

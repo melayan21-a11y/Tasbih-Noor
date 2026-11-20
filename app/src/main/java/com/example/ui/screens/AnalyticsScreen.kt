@@ -1,5 +1,8 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -67,6 +70,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+import androidx.compose.ui.graphics.drawscope.Stroke
+
 @Composable
 fun AnalyticsScreen(
     viewModel: TasbihViewModel,
@@ -79,6 +84,7 @@ fun AnalyticsScreen(
     val dailyTotals by viewModel.dailyTotals.collectAsState()
     val typeStats by viewModel.typeStats.collectAsState()
     val todayTotal by viewModel.todayTotal.collectAsState()
+    val dailyGoalTarget by viewModel.dailyGoalTarget.collectAsState()
     val lifetimeTotal by viewModel.lifetimeTotal.collectAsState()
     val streakInfo by viewModel.streakInfo.collectAsState()
     val currentCalMonth by viewModel.currentCalendarMonth.collectAsState()
@@ -88,6 +94,18 @@ fun AnalyticsScreen(
     }
 
     var selectedDayStat by remember { mutableStateOf<MonthDayStat?>(null) }
+    var showGoalDialog by remember { mutableStateOf(false) }
+
+    if (showGoalDialog) {
+        DailyGoalTargetDialog(
+            currentGoal = dailyGoalTarget,
+            onDismiss = { showGoalDialog = false },
+            onConfirm = { newGoal ->
+                viewModel.setDailyGoalTarget(newGoal)
+                showGoalDialog = false
+            }
+        )
+    }
 
     val monthFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
     val monthTitle = monthFormat.format(currentCalMonth.time)
@@ -221,6 +239,110 @@ fun AnalyticsScreen(
                                 text = "Today: $todayTotal",
                                 fontSize = 11.sp,
                                 color = palette.textSecondary
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Daily Target Progress Ring Card
+            item {
+                val goalFraction = if (dailyGoalTarget > 0) {
+                    (todayTotal.toFloat() / dailyGoalTarget.toFloat()).coerceIn(0f, 1f)
+                } else 0f
+                val animatedSweep by animateFloatAsState(
+                    targetValue = goalFraction * 360f,
+                    animationSpec = tween(durationMillis = 600),
+                    label = "analytics_goal_sweep"
+                )
+                val percentInt = (goalFraction * 100).toInt()
+                val remaining = (dailyGoalTarget - todayTotal).coerceAtLeast(0)
+
+                Card(
+                    onClick = { showGoalDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("daily_goal_card"),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = palette.surface.copy(alpha = 0.94f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, palette.cardBorder)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier.size(74.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                drawArc(
+                                    color = palette.cardBorder.copy(alpha = 0.45f),
+                                    startAngle = -90f,
+                                    sweepAngle = 360f,
+                                    useCenter = false,
+                                    style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+                                )
+                                drawArc(
+                                    color = palette.accent,
+                                    startAngle = -90f,
+                                    sweepAngle = animatedSweep,
+                                    useCenter = false,
+                                    style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
+                                )
+                            }
+                            Text(
+                                text = "$percentInt%",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = headingColor
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Daily Dhikr Target",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = headingColor
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = palette.primaryContainer
+                                ) {
+                                    Text(
+                                        text = "Edit Goal",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = headingColor,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "$todayTotal / $dailyGoalTarget beads today",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = palette.textPrimary
+                            )
+                            Text(
+                                text = if (remaining == 0) {
+                                    "Daily goal achieved! MashaAllah"
+                                } else {
+                                    "$remaining remaining to complete today's ring"
+                                },
+                                fontSize = 11.sp,
+                                color = if (remaining == 0) palette.accent else palette.textSecondary
                             )
                         }
                     }

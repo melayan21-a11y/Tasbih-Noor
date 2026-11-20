@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import com.example.data.model.DhikrItem
 import com.example.data.model.DhikrLog
+import com.example.data.model.DhikrPlaylist
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -20,19 +21,21 @@ data class RestoreResult(
     val success: Boolean,
     val restoredDhikrs: List<DhikrItem>,
     val restoredLogs: List<DhikrLog>,
+    val restoredPlaylists: List<DhikrPlaylist> = emptyList(),
     val message: String
 )
 
 object BackupManager {
 
-    private const val BACKUP_VERSION = 1
+    private const val BACKUP_VERSION = 2
 
     /**
-     * Serializes all custom dhikrs and logs into a formatted JSON string.
+     * Serializes all custom dhikrs, logs, and custom playlists into a formatted JSON string.
      */
     fun createBackupJson(
         customDhikrs: List<DhikrItem>,
-        logs: List<DhikrLog>
+        logs: List<DhikrLog>,
+        customPlaylists: List<DhikrPlaylist> = emptyList()
     ): String {
         val root = JSONObject()
         root.put("app", "Tasbih Noor")
@@ -68,6 +71,18 @@ object BackupManager {
         }
         root.put("dhikrLogs", logsArray)
 
+        // Custom Playlists
+        val playlistsArray = JSONArray()
+        for (playlist in customPlaylists) {
+            val pObj = JSONObject()
+            pObj.put("name", playlist.name)
+            pObj.put("subtitle", playlist.subtitle)
+            pObj.put("stepsJson", playlist.stepsJson)
+            pObj.put("orderIndex", playlist.orderIndex)
+            playlistsArray.put(pObj)
+        }
+        root.put("customPlaylists", playlistsArray)
+
         return root.toString(2)
     }
 
@@ -94,6 +109,7 @@ object BackupManager {
             val root = JSONObject(jsonString)
             val dhikrsList = mutableListOf<DhikrItem>()
             val logsList = mutableListOf<DhikrLog>()
+            val playlistsList = mutableListOf<DhikrPlaylist>()
 
             if (root.has("customDhikrs")) {
                 val dhikrsArray = root.getJSONArray("customDhikrs")
@@ -129,17 +145,35 @@ object BackupManager {
                 }
             }
 
+            if (root.has("customPlaylists")) {
+                val playlistsArray = root.getJSONArray("customPlaylists")
+                for (i in 0 until playlistsArray.length()) {
+                    val obj = playlistsArray.getJSONObject(i)
+                    playlistsList.add(
+                        DhikrPlaylist(
+                            name = obj.optString("name", "Custom Playlist"),
+                            subtitle = obj.optString("subtitle", ""),
+                            stepsJson = obj.optString("stepsJson", "[]"),
+                            isBuiltIn = false,
+                            orderIndex = obj.optInt("orderIndex", i + 10)
+                        )
+                    )
+                }
+            }
+
             return RestoreResult(
                 success = true,
                 restoredDhikrs = dhikrsList,
                 restoredLogs = logsList,
-                message = "Backup loaded successfully: ${dhikrsList.size} custom prayers and ${logsList.size} logs."
+                restoredPlaylists = playlistsList,
+                message = "Backup loaded: ${dhikrsList.size} custom prayers, ${playlistsList.size} playlists, and ${logsList.size} logs."
             )
         } catch (e: Exception) {
             return RestoreResult(
                 success = false,
                 restoredDhikrs = emptyList(),
                 restoredLogs = emptyList(),
+                restoredPlaylists = emptyList(),
                 message = "Invalid backup format: ${e.localizedMessage}"
             )
         }

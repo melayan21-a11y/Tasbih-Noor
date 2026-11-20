@@ -1,13 +1,16 @@
 package com.example
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import com.example.util.AudioHapticManager
 import com.example.util.SoundEffectType
@@ -42,6 +45,14 @@ class AppLaunchRobolectricTest {
         )
         assertTrue(pcm.size > 4000)
 
+        val chimePcm = manager.synthesizeHarmonicChime(
+            frequenciesHz = listOf(587.33, 880.0),
+            noteOffsetSeconds = 0.085,
+            durationMs = 460
+        )
+        assertTrue(chimePcm.size > 8000)
+        assertEquals(0, chimePcm.size % 2)
+
         val wav = manager.buildWavBytes(pcm)
         assertEquals(pcm.size + 44, wav.size)
         assertEquals('R'.code.toByte(), wav[0])
@@ -56,6 +67,8 @@ class AppLaunchRobolectricTest {
         SoundEffectType.entries.forEach { sound ->
             manager.playBeadSound(sound)
         }
+        manager.playLapChime()
+        manager.playMilestoneChime()
         manager.destroy()
     }
 
@@ -64,16 +77,46 @@ class AppLaunchRobolectricTest {
     fun mainActivity_launchesAndNavigatesAllTabsWithoutCrashing() {
         composeTestRule.waitForIdle()
 
-        // Interact with main Tasbih bead screen
+        // Interact with main Tasbih bead screen, Daily Goal Dialog, Focus Mode, and Guided Set
         composeTestRule.onNodeWithTag("center_counter_button").performClick()
         composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("today_count_badge").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("goal_preset_500").performClick()
+        composeTestRule.onNodeWithTag("save_daily_goal_btn").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("focus_mode_toggle").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("night_mode_toggle").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("focus_mode_toggle").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("night_mode_toggle").assertIsDisplayed()
+
         composeTestRule.onNodeWithTag("night_mode_toggle").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("night_mode_toggle").performClick()
         composeTestRule.waitForIdle()
 
-        // Navigate across all tabs
+        // Navigate to Adhkar Library, create a custom playlist, and launch a guided playlist
         composeTestRule.onNodeWithTag("nav_tab_library").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasTestTag("playlists_section"))
+        composeTestRule.onNodeWithTag("create_playlist_btn").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("playlist_name_input").performTextInput("Evening Peace")
+        composeTestRule.onNodeWithTag("playlist_add_dhikr_1").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("playlist_add_dhikr_2").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("save_playlist_btn").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("playlist_card_2").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("playlist_stepper_row").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("center_counter_button").performClick()
+        composeTestRule.onNodeWithTag("exit_playlist_chip").performClick()
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithTag("nav_tab_qibla").performClick()
@@ -81,8 +124,10 @@ class AppLaunchRobolectricTest {
 
         composeTestRule.onNodeWithTag("nav_tab_analytics").performClick()
         composeTestRule.waitForIdle()
+        composeTestRule.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasTestTag("daily_goal_card"))
+        composeTestRule.onNodeWithTag("daily_goal_card").assertIsDisplayed()
 
-        // Open Settings and interact with Bead Materials, Islamic Bead Craft, Sound, Voice, and Themes
+        // Open Settings and interact with Bead Materials, Islamic Bead Craft, Sound, Chimes, Voice, and Themes
         composeTestRule.onNodeWithTag("nav_tab_settings").performClick()
         composeTestRule.waitForIdle()
 
@@ -96,6 +141,12 @@ class AppLaunchRobolectricTest {
 
         composeTestRule.onNode(hasScrollAction()).performScrollToNode(hasTestTag("sound_chip_pearl_tap"))
         composeTestRule.onNodeWithTag("sound_chip_pearl_tap").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNode(hasScrollAction()).performScrollToNode(hasTestTag("milestone_chime_switch"))
+        composeTestRule.onNodeWithTag("milestone_chime_switch").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("milestone_chime_switch").performClick()
         composeTestRule.waitForIdle()
 
         composeTestRule.onNode(hasScrollAction()).performScrollToNode(hasTestTag("voice_lang_english"))

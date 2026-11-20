@@ -1,16 +1,20 @@
 package com.example.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -193,6 +197,7 @@ fun DraggablePrayerBeads(
     cordColor: Color = GoldDark,
     themeAccent: Color = GoldPrimary,
     themeAccentLight: Color = GoldLight,
+    beadPullSeq: Int = 0,
     onBeadPulled: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -201,8 +206,13 @@ fun DraggablePrayerBeads(
     val beadOffsetAnim = remember { Animatable(0f) }
     // Pendulum swing angle (in degrees) for the Karkousha silk tassel
     val tasselAngleAnim = remember { Animatable(0f) }
+    // Subtle expanding Noor light ripple on every bead crossing
+    val noorRippleAnim = remember { Animatable(1f) }
+    // Tactile snap scale pop for the active bead passing through the clasp
+    val beadPopAnim = remember { Animatable(1f) }
     var accumulatedDrag by remember { mutableFloatStateOf(0f) }
     var hasPassedBeadInCurrentGesture by remember { mutableStateOf(false) }
+    var lastGestureTriggeredSeq by remember { mutableIntStateOf(0) }
 
     val threshold = tension.dragDistancePx
 
@@ -220,6 +230,41 @@ fun DraggablePrayerBeads(
         }
     }
 
+    LaunchedEffect(beadPullSeq) {
+        if (beadPullSeq > 0) {
+            launch {
+                noorRippleAnim.snapTo(0f)
+                noorRippleAnim.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 480, easing = FastOutSlowInEasing)
+                )
+            }
+            launch {
+                beadPopAnim.snapTo(1.075f)
+                beadPopAnim.animateTo(
+                    targetValue = 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                )
+            }
+            // If pull came from Center Counter HUD or Auto Guide rather than direct drag/tap on beads:
+            if (beadPullSeq != lastGestureTriggeredSeq) {
+                launch {
+                    beadOffsetAnim.animateTo(
+                        targetValue = kotlin.math.round(beadOffsetAnim.value) + 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    )
+                }
+                triggerTasselSwing(9f)
+            }
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -227,6 +272,7 @@ fun DraggablePrayerBeads(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = {
+                        lastGestureTriggeredSeq = beadPullSeq + 1
                         // Single tap advances exactly one bead smoothly and gently swings the tassel
                         coroutineScope.launch {
                             beadOffsetAnim.animateTo(
@@ -274,6 +320,7 @@ fun DraggablePrayerBeads(
                         }
 
                         if (abs(accumulatedDrag) >= threshold) {
+                            lastGestureTriggeredSeq = beadPullSeq + 1
                             onBeadPulled()
                             accumulatedDrag = 0f
                             if (singleBeadLock) {
@@ -373,8 +420,41 @@ fun DraggablePrayerBeads(
                 )
             )
 
-            // 2. Center Counter Divider & Swinging Karkousha Tassel below the clasp
+            // 2. Subtle Noor Ripple Halo expanding softly from center clasp on each crossing
             val centerCordY = centerY + stringSag * 0.85f
+            val rippleProgress = noorRippleAnim.value
+            if (rippleProgress in 0.001f..0.995f) {
+                val fade = (1f - rippleProgress) * (1f - rippleProgress)
+                val outerRadius = beadRadius * (1.15f + rippleProgress * 2.15f)
+                val innerRadius = beadRadius * (0.95f + rippleProgress * 1.35f)
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            themeAccentLight.copy(alpha = 0.30f * fade),
+                            themeAccent.copy(alpha = 0.14f * fade),
+                            Color.Transparent
+                        ),
+                        center = Offset(centerX, centerCordY),
+                        radius = outerRadius
+                    ),
+                    radius = outerRadius,
+                    center = Offset(centerX, centerCordY)
+                )
+                drawCircle(
+                    color = themeAccentLight.copy(alpha = 0.52f * fade),
+                    radius = outerRadius * 0.92f,
+                    center = Offset(centerX, centerCordY),
+                    style = Stroke(width = 2.4f * (1f - 0.45f * rippleProgress))
+                )
+                drawCircle(
+                    color = themeAccent.copy(alpha = 0.36f * fade),
+                    radius = innerRadius,
+                    center = Offset(centerX, centerCordY),
+                    style = Stroke(width = 1.6f)
+                )
+            }
+
+            // 3. Center Counter Divider & Swinging Karkousha Tassel below the clasp
             drawCenterMarkerAndTassel(
                 centerX = centerX,
                 centerY = centerCordY,
@@ -387,7 +467,7 @@ fun DraggablePrayerBeads(
                 markerLightTheme = themeAccentLight
             )
 
-            // 3. Render Large 3D Beads sliding across the cord
+            // 4. Render Large 3D Beads sliding across the cord
             val currentOffsetFraction = beadOffsetAnim.value
             val baseBeadIndex = currentOffsetFraction.toInt()
             val fractionalShift = (currentOffsetFraction - baseBeadIndex) * beadSpacing
@@ -406,10 +486,12 @@ fun DraggablePrayerBeads(
                 val isMarker = (abs(beadIndex) % 11 == 0) && (beadIndex != 0)
                 val distanceFromCenter = abs(beadX - centerX)
                 val isHighlighted = distanceFromCenter < (beadSpacing * 0.45f)
+                val baseSize = if (isMarker) beadRadius * 1.08f else beadRadius
+                val poppedSize = if (isHighlighted) baseSize * beadPopAnim.value else baseSize
 
                 drawLarge3DBead(
                     center = Offset(beadX, curveY),
-                    radius = if (isMarker) beadRadius * 1.08f else beadRadius,
+                    radius = poppedSize,
                     material = material,
                     design = design,
                     isMarker = isMarker,

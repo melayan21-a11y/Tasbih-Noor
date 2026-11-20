@@ -210,6 +210,19 @@ class TasbihPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_PREFER_ARABIC_VOICE, true)
         set(value) = prefs.edit().putBoolean(KEY_PREFER_ARABIC_VOICE, value).apply()
 
+    // Daily Target Goal & Sanctuary Focus / Chimes
+    var dailyGoalTarget: Int
+        get() = prefs.getInt(KEY_DAILY_GOAL_TARGET, 300).coerceAtLeast(10)
+        set(value) = prefs.edit().putInt(KEY_DAILY_GOAL_TARGET, value.coerceAtLeast(10)).apply()
+
+    var milestoneChimeEnabled: Boolean
+        get() = prefs.getBoolean(KEY_MILESTONE_CHIME_ENABLED, true)
+        set(value) = prefs.edit().putBoolean(KEY_MILESTONE_CHIME_ENABLED, value).apply()
+
+    var isFocusMode: Boolean
+        get() = prefs.getBoolean(KEY_FOCUS_MODE, false)
+        set(value) = prefs.edit().putBoolean(KEY_FOCUS_MODE, value).apply()
+
     companion object {
         private const val PREFS_NAME = "tasbih_user_preferences"
         private const val KEY_SOUND_TYPE = "pref_sound_type"
@@ -238,6 +251,9 @@ class TasbihPreferences(context: Context) {
         private const val KEY_SELECTED_VOICE_NAME = "pref_selected_voice_name"
         private const val KEY_SPEECH_CADENCE = "pref_speech_cadence"
         private const val KEY_PREFER_ARABIC_VOICE = "pref_prefer_arabic_voice"
+        private const val KEY_DAILY_GOAL_TARGET = "pref_daily_goal_target"
+        private const val KEY_MILESTONE_CHIME_ENABLED = "pref_milestone_chime_enabled"
+        private const val KEY_FOCUS_MODE = "pref_focus_mode"
     }
 }
 
